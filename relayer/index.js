@@ -1,7 +1,7 @@
-import express from 'express';
-import { ethers } from 'ethers';
-import dotenv from 'dotenv';
-import MetaTxInteraction from './MetaTxInteraction.json' assert { type: 'json' };
+const express = require('express');
+const ethers = require('ethers');
+const dotenv = require('dotenv');
+const MetaTxInteraction = require('./MetaTxInteraction.json');
 
 dotenv.config();
 const app = express();
