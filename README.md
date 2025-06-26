@@ -73,14 +73,9 @@ npm install ethers axios
 ```bash
 cd contracts
 
-# Initialize Foundry project (if not already done)
-forge init --no-git --no-commit
-
-# Install OpenZeppelin contracts
-forge install OpenZeppelin/openzeppelin-contracts
-
-# Install Forge Standard Library
-forge install foundry-rs/forge-std
+# Install OpenZeppelin contracts and Forge Standard Library
+git clone https://github.com/foundry-rs/forge-std.git lib/forge-std
+git clone https://github.com/OpenZeppelin/openzeppelin-contracts.git lib/openzeppelin-contracts
 
 # Build contracts
 forge build

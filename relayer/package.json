@@ -1,0 +1,25 @@
+{
+  "name": "ai-validator-relayer",
+  "version": "1.0.0",
+  "description": "AI-validated meta-transaction relayer service",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ethers": "^6.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "keywords": [
+    "ethereum",
+    "meta-transactions",
+    "ai",
+    "blockchain",
+    "relayer"
+  ],
+  "author": "",
+  "license": "MIT"
+}
