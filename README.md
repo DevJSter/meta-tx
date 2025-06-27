@@ -4,6 +4,11 @@ This project implements an AI-validated meta-transaction system on Ethereum usin
 
 ## Architecture Overview
 
+![AI-Validated Meta-Transaction Architecture](./architecture.png)
+
+*Diagram: High-level architecture showing the interaction between Client, Relayer (with AI validation), and Smart Contract. Place your architecture diagram as `architecture.png` in the project root.*
+
+
 The system enables gasless transactions through meta-transactions with AI validation:
 
 1. **Smart Contract** (`MetaTxInteraction.sol`): Handles EIP-712 signature verification and meta-transaction execution
