@@ -1,8 +1,8 @@
 import { ethers } from 'ethers';
 import axios from 'axios';
 
-const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
-const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+const provider = new ethers.JsonRpcProvider('http://localhost:9650/ext/bc/HekfYrK1fxgzkBSPj5XwBUNfxvZuMS7wLq7p7r6bQQJm6jA2M/rpc');
+const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; // Default for local testing
 
 // Create a wallet (user)
 const privateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
@@ -10,9 +10,9 @@ const userWallet = new ethers.Wallet(privateKey, provider);
 
 // EIP-712 domain and types
 const domain = {
-  name: "MetaTxInteraction",
+  name: "QoneqtMetaTx",
   version: "1",
-  chainId: 31337,
+  chainId: 930393, // Avalanche subnet chain ID
   verifyingContract: contractAddress
 };
 
@@ -69,3 +69,8 @@ async function signAndSend() {
 }
 
 signAndSend().catch(console.error);
+
+
+// Rate limiters 
+
+// Contexts { these txes --> customised Ai Validation context }
