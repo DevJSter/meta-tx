@@ -48,7 +48,7 @@ async function signAndSend() {
   const signature = await userWallet.signTypedData(domain, types, value);
 
   try {
-    const res = await axios.post('http://localhost:4000/relayMetaTx', {
+    const res = await axios.post('http://localhost:8000/relayMetaTx', {
       user: userWallet.address,
       interaction,
       nonce,

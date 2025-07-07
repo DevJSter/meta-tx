@@ -1,6 +1,11 @@
 # AI-Validated Smart Wallet System
 
-This project implements an AI-validated meta-transaction system on Ethereum using EIP-712 signatures. The system consists of three main components: smart contracts, a relayer service, and a client application.
+This project implements AI-validated meta-transaction systems on Ethereum with two different approaches:
+
+1. **EIP-712 with Relayer Service** (in `contracts/` and `relayer/` folders)
+2. **EIP-2771 with Forwarder Contract** (in `EIP2771/` folder)
+
+Both implementations provide gasless transactions with AI validation but use different architectural patterns.
 
 ## Architecture Overview
 
@@ -27,7 +32,7 @@ The system enables gasless transactions through meta-transactions with AI valida
 
 ```
 new-ai-validator/
-├── contracts/                    # Smart contracts (Foundry project)
+├── contracts/                    # EIP-712 Smart contracts (Foundry project)
 │   ├── src/
 │   │   └── EIPMetaTx.sol        # Main meta-transaction contract
 │   ├── script/
@@ -35,11 +40,24 @@ new-ai-validator/
 │   ├── test/
 │   │   └── EIPMetaTest.t.sol    # Contract tests
 │   ├── foundry.toml             # Foundry configuration
-│   └── lib/                     # Dependencies (empty - needs setup)
-├── relayer/                     # Node.js relayer service
+│   └── lib/                     # Dependencies (OpenZeppelin, Forge-std)
+├── EIP2771/                     # EIP-2771 Implementation (Foundry project)
+│   ├── src/
+│   │   ├── AIValidatedForwarder.sol      # EIP-2771 forwarder with AI validation
+│   │   └── MetaTxInteractionRecipient.sol # EIP-2771 recipient contract
+│   ├── script/
+│   │   └── DeployLocal.s.sol    # Deployment script
+│   ├── test/
+│   │   └── EIP2771Test.t.sol    # Contract tests
+│   ├── client/
+│   │   ├── signer.js            # EIP-2771 client application
+│   │   └── package.json         # Node.js dependencies
+│   ├── foundry.toml             # Foundry configuration
+│   └── README.md                # EIP-2771 specific documentation
+├── relayer/                     # Node.js relayer service (for EIP-712)
 │   ├── index.js                 # Express server with AI validation
 │   └── .env                     # Environment configuration
-├── client/                      # Client application
+├── client/                      # Client application (for EIP-712)
 │   └── signer.js               # EIP-712 signing and transaction submission
 └── README.md                   # This file
 ```
@@ -212,6 +230,46 @@ Currently implemented as a simple filter in the relayer:
 - Rejects all other interactions
 
 You can extend this with more sophisticated AI validation logic.
+
+## Implementation Comparison
+
+This project includes two different approaches to AI-validated meta-transactions:
+
+### EIP-712 with Relayer Service (`contracts/` + `relayer/`)
+- **Architecture**: Client → Relayer Service → Smart Contract
+- **Validation**: Off-chain AI validation in Node.js service
+- **Standard**: Custom EIP-712 implementation
+- **Pros**: Flexible validation logic, easy to update rules
+- **Cons**: Requires service maintenance, centralized relayer
+
+### EIP-2771 with Forwarder Contract (`EIP2771/`)
+- **Architecture**: Client → Forwarder Contract → Recipient Contract
+- **Validation**: On-chain AI validation in smart contract
+- **Standard**: Standard EIP-2771 compliance
+- **Pros**: Decentralized, standardized, no service dependencies
+- **Cons**: Less flexible, requires contract upgrades for rule changes
+
+Choose the approach that best fits your use case:
+- Use **EIP-712** for maximum flexibility and complex AI logic
+- Use **EIP-2771** for standardization and decentralized validation
+
+## Quick Start
+
+### For EIP-712 Implementation:
+```bash
+# Follow the original setup instructions below
+cd contracts && forge build
+cd ../relayer && npm install
+# ... (continue with existing instructions)
+```
+
+### For EIP-2771 Implementation:
+```bash
+cd EIP2771
+forge install
+forge test
+# See EIP2771/README.md for detailed instructions
+```
 
 ## Testing
 

@@ -1,0 +1,17 @@
+{
+  "name": "eip2771-client",
+  "version": "1.0.0",
+  "description": "Client for EIP-2771 meta-transactions with AI validation",
+  "main": "signer.js",
+  "scripts": {
+    "start": "node signer.js"
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "ethers": "^6.15.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
