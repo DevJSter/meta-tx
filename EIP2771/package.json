@@ -1,0 +1,19 @@
+{
+  "name": "eip2771-ai-validator",
+  "version": "1.0.0",
+  "description": "EIP-2771 Meta-Transaction system with AI validation using Ollama",
+  "main": "ollama-ai-service.js",
+  "scripts": {
+    "start": "node ollama-ai-service.js",
+    "client": "node client/signer.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ethers": "^6.13.2",
+    "axios": "^1.7.2"
+  },
+  "devDependencies": {},
+  "keywords": ["eip-2771", "meta-transaction", "ai", "ollama", "ethereum"],
+  "author": "",
+  "license": "MIT"
+}

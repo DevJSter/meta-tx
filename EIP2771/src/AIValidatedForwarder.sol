@@ -6,16 +6,24 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title AIValidatedForwarder
- * @dev EIP-2771 compliant forwarder with AI validation
+ * @dev EIP-2771 compliant forwarder with Ollama AI validation
  * This contract extends OpenZeppelin's ERC2771Forwarder to add AI validation logic
  */
 contract AIValidatedForwarder is ERC2771Forwarder, Ownable {
     // Events
-    event InteractionValidated(address indexed from, string interaction, bool isValid);
+    event InteractionValidated(address indexed from, string interaction, bool isValid, uint256 significance);
     event AIValidationRuleUpdated(string rule, bool isActive);
+    event AIValidatorUpdated(address indexed oldValidator, address indexed newValidator);
     
     // AI validation rules mapping
     mapping(string => bool) public validInteractionPrefixes;
+    
+    // AI Validator address (can be a service contract or EOA)
+    address public aiValidator;
+    
+    // Significance thresholds (in basis points, 10000 = 100%)
+    uint256 public approvalThreshold = 7000; // 70%
+    uint256 public rejectionThreshold = 3000; // 30%
     
     // Constructor
     constructor(string memory name) ERC2771Forwarder(name) Ownable(msg.sender) {
@@ -24,6 +32,28 @@ contract AIValidatedForwarder is ERC2771Forwarder, Ownable {
         validInteractionPrefixes["comment_"] = true;
         validInteractionPrefixes["share_"] = true;
         validInteractionPrefixes["follow_"] = true;
+    }
+    
+    /**
+     * @dev Set the AI validator address
+     * @param _aiValidator Address of the AI validation service
+     */
+    function setAIValidator(address _aiValidator) external onlyOwner {
+        address oldValidator = aiValidator;
+        aiValidator = _aiValidator;
+        emit AIValidatorUpdated(oldValidator, _aiValidator);
+    }
+    
+    /**
+     * @dev Set significance thresholds
+     * @param _approvalThreshold Threshold for approval (in basis points)
+     * @param _rejectionThreshold Threshold for rejection (in basis points)
+     */
+    function setThresholds(uint256 _approvalThreshold, uint256 _rejectionThreshold) external onlyOwner {
+        require(_approvalThreshold > _rejectionThreshold, "Invalid thresholds");
+        require(_approvalThreshold <= 10000, "Approval threshold too high");
+        approvalThreshold = _approvalThreshold;
+        rejectionThreshold = _rejectionThreshold;
     }
     
     /**
@@ -37,11 +67,11 @@ contract AIValidatedForwarder is ERC2771Forwarder, Ownable {
     }
     
     /**
-     * @dev Validate interaction using AI rules
+     * @dev Validate interaction using basic rules (fallback)
      * @param interaction The interaction string to validate
      * @return bool Whether the interaction is valid
      */
-    function validateInteraction(string memory interaction) public view returns (bool) {
+    function validateInteractionBasic(string memory interaction) public view returns (bool) {
         bytes memory interactionBytes = bytes(interaction);
         
         // Check against all valid prefixes
@@ -63,14 +93,16 @@ contract AIValidatedForwarder is ERC2771Forwarder, Ownable {
         bool isValidSignature = verify(request);
         require(isValidSignature, "AIValidatedForwarder: invalid signature");
         
-        // Extract interaction from calldata (assuming it's passed as a parameter)
-        // This is a simplified approach - in practice, you'd decode the actual function call
+        // Extract interaction from calldata
         string memory interaction = _extractInteractionFromCalldata(request.data);
         
-        // Validate interaction with AI rules
-        bool isValidInteraction = validateInteraction(interaction);
+        // For now, use basic validation (can be enhanced with Ollama integration)
+        bool isValidInteraction = validateInteractionBasic(interaction);
         
-        emit InteractionValidated(request.from, interaction, isValidInteraction);
+        // Default significance for basic validation
+        uint256 significance = isValidInteraction ? 8000 : 2000; // 80% or 20%
+        
+        emit InteractionValidated(request.from, interaction, isValidInteraction, significance);
         
         if (!isValidInteraction) {
             revert("AIValidatedForwarder: interaction rejected by AI validation");
@@ -78,6 +110,59 @@ contract AIValidatedForwarder is ERC2771Forwarder, Ownable {
         
         // Execute the meta-transaction if validation passes
         execute(request);
+    }
+    
+    /**
+     * @dev Execute with external AI validation result
+     * @param request The forwarding request
+     * @param aiApproved Whether AI approved the interaction
+     * @param significance The AI confidence level (0-10000 basis points)
+     */
+    function executeWithAIResult(
+        ForwardRequestData calldata request,
+        bool aiApproved,
+        uint256 significance
+    ) external payable {
+        require(msg.sender == aiValidator || msg.sender == owner(), "Unauthorized AI validation");
+        
+        // Verify the signature first
+        bool isValidSignature = verify(request);
+        require(isValidSignature, "AIValidatedForwarder: invalid signature");
+        
+        // Extract interaction for logging
+        string memory interaction = _extractInteractionFromCalldata(request.data);
+        
+        // Make decision based on AI result and significance
+        bool finalDecision = _makeFinalDecision(aiApproved, significance);
+        
+        emit InteractionValidated(request.from, interaction, finalDecision, significance);
+        
+        if (!finalDecision) {
+            revert("AIValidatedForwarder: interaction rejected by AI validation");
+        }
+        
+        // Execute the meta-transaction if validation passes
+        execute(request);
+    }
+    
+    /**
+     * @dev Make final decision based on AI result and significance thresholds
+     */
+    function _makeFinalDecision(bool aiApproved, uint256 significance) internal view returns (bool) {
+        if (significance >= approvalThreshold && aiApproved) {
+            return true; // High confidence approval
+        }
+        
+        if (significance >= approvalThreshold && !aiApproved) {
+            return false; // High confidence rejection
+        }
+        
+        if (significance <= rejectionThreshold) {
+            return false; // Low confidence, default to rejection
+        }
+        
+        // Medium confidence - use AI decision
+        return aiApproved;
     }
     
     /**
@@ -95,32 +180,31 @@ contract AIValidatedForwarder is ERC2771Forwarder, Ownable {
     
     /**
      * @dev Extract interaction string from calldata
-     * This is a simplified implementation - adjust based on your target contract's interface
+     * This extracts the interaction parameter from executeInteraction(string) calls
      */
     function _extractInteractionFromCalldata(bytes calldata data) internal pure returns (string memory) {
         // For executeInteraction(string) function
-        // Skip function selector (4 bytes) and extract the string parameter
-        if (data.length < 68) return ""; // 4 bytes selector + 32 bytes offset + 32 bytes length
+        // Function selector: 4 bytes
+        // String offset: 32 bytes  
+        // String length: 32 bytes
+        // String data: length bytes
         
-        // The string parameter starts at offset 0x20 (32 bytes) after the function selector
-        uint256 stringOffset;
+        if (data.length < 68) return ""; // 4 + 32 + 32 minimum
+        
         uint256 stringLength;
         
+        // Read the length of the string (at offset 36: 4 bytes selector + 32 bytes offset)
         assembly {
-            // Skip the function selector (4 bytes) and read the offset to the string
-            stringOffset := calldataload(add(data.offset, 4))
-            // Read the length of the string at the offset
-            stringLength := calldataload(add(add(data.offset, 4), stringOffset))
+            stringLength := calldataload(add(data.offset, 36))
         }
         
         if (stringLength == 0 || stringLength > 1000) return ""; // Sanity check
         
-        // Extract the actual string bytes
+        // Extract the actual string bytes starting at offset 68 (4 + 32 + 32)
         bytes memory result = new bytes(stringLength);
-        uint256 dataStart = 4 + stringOffset + 32; // 4 (selector) + offset + 32 (length field)
         
         for (uint256 i = 0; i < stringLength; i++) {
-            result[i] = data[dataStart + i];
+            result[i] = data[68 + i];
         }
         
         return string(result);

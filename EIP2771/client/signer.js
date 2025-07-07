@@ -1,4 +1,5 @@
 const { ethers } = require('ethers');
+const axios = require('axios');
 
 // Configuration
 const RPC_URL = 'http://localhost:9650/ext/bc/HekfYrK1fxgzkBSPj5XwBUNfxvZuMS7wLq7p7r6bQQJm6jA2M/rpc';
@@ -8,9 +9,11 @@ const CHAIN_ID = 930393;
 const FORWARDER_ADDRESS = '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9';
 const RECIPIENT_ADDRESS = '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707';
 
+// AI Service URL
+const AI_SERVICE_URL = 'http://localhost:3001';
+
 // Replace with actual private keys (use different accounts)
 const USER_PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d'; // Second Anvil account
-const RELAYER_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'; // First Anvil account
 
 // EIP-712 Domain for the forwarder
 const domain = {
@@ -36,10 +39,7 @@ const types = {
 // Contract ABIs (simplified)
 const forwarderABI = [
     'function nonces(address owner) external view returns (uint256)',
-    'function execute((address from, address to, uint256 value, uint256 gas, uint48 deadline, bytes data, bytes signature)) external payable',
-    'function executeWithValidation((address from, address to, uint256 value, uint256 gas, uint48 deadline, bytes data, bytes signature)) external payable',
-    'function verify((address from, address to, uint256 value, uint256 gas, uint48 deadline, bytes data, bytes signature)) external view returns (bool)',
-    'function validateInteraction(string memory interaction) external view returns (bool)'
+    'function validateInteractionBasic(string memory interaction) external view returns (bool)'
 ];
 
 const recipientABI = [
@@ -66,7 +66,7 @@ async function signMetaTransaction(userWallet, forwarderContract, recipientAddre
         to: recipientAddress,
         value: 0,
         gas: 100000,
-        nonce: nonce,
+        nonce: Number(nonce), // Convert BigInt to Number
         deadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
         data: data
     };
@@ -83,60 +83,29 @@ async function signMetaTransaction(userWallet, forwarderContract, recipientAddre
     const signature = await userWallet.signTypedData(domain, types, request);
     console.log(`Signature: ${signature}`);
     
-    return { request, signature };
+    return { request: { ...request, signature }, signature };
 }
 
-async function submitMetaTransaction(relayerWallet, forwarderContract, request, signature) {
-    console.log('\\n=== Submitting Meta-Transaction ===');
-    
-    // Create the full request with signature
-    const fullRequest = {
-        from: request.from,
-        to: request.to,
-        value: request.value,
-        gas: request.gas,
-        deadline: request.deadline,
-        data: request.data,
-        signature: signature
-    };
+async function submitToAIService(request) {
+    console.log('\\n=== Submitting to AI Validation Service ===');
     
     try {
-        // First, verify the signature is valid
-        const isValidSignature = await forwarderContract.verify(fullRequest);
-        console.log(`Signature validation: ${isValidSignature}`);
+        console.log('📡 Sending request to AI service...');
+        const response = await axios.post(`${AI_SERVICE_URL}/validateAndRelay`, {
+            request: request
+        });
         
-        if (!isValidSignature) {
-            throw new Error('Invalid signature');
+        console.log('✅ AI Service Response:', response.data);
+        return response.data;
+        
+    } catch (error) {
+        if (error.response) {
+            console.error('❌ AI Service Error:', error.response.data);
+            throw new Error(`AI Validation failed: ${error.response.data.error}`);
+        } else {
+            console.error('❌ Network Error:', error.message);
+            throw new Error(`Network error: ${error.message}`);
         }
-        
-        // Submit the meta-transaction using regular execute (bypassing AI validation for now)
-        console.log('Submitting meta-transaction...');
-        const tx = await forwarderContract.connect(relayerWallet).execute(fullRequest);
-        console.log(`Transaction hash: ${tx.hash}`);
-        
-        // Wait for confirmation
-        const receipt = await tx.wait();
-        console.log(`Transaction confirmed in block: ${receipt.blockNumber}`);
-        console.log(`Gas used: ${receipt.gasUsed}`);
-        
-        return receipt;
-        
-    } catch (error) {
-        console.error('Error submitting meta-transaction:', error.message);
-        throw error;
-    }
-}
-
-async function checkInteractionValidation(forwarderContract, interaction) {
-    console.log('\\n=== AI Validation Check ===');
-    
-    try {
-        const isValid = await forwarderContract.validateInteraction(interaction);
-        console.log(`Interaction "${interaction}" is ${isValid ? 'VALID' : 'INVALID'} according to AI rules`);
-        return isValid;
-    } catch (error) {
-        console.error('Error checking validation:', error.message);
-        return false;
     }
 }
 
@@ -159,87 +128,95 @@ async function checkUserInteractions(recipientContract, userAddress) {
     }
 }
 
+async function testAIValidation(interaction) {
+    console.log('\\n=== Testing AI Validation ===');
+    
+    try {
+        const response = await axios.post(`${AI_SERVICE_URL}/testValidation`, {
+            interaction: interaction
+        });
+        
+        console.log('🤖 AI Test Result:', response.data);
+        return response.data;
+        
+    } catch (error) {
+        console.error('Error testing AI validation:', error.message);
+        return null;
+    }
+}
+
 async function main() {
-    console.log('🚀 EIP-2771 Meta-Transaction Client Started');
-    console.log('=========================================');
+    console.log('🚀 EIP-2771 Ollama AI Meta-Transaction Client Started');
+    console.log('==================================================');
     
     // Setup provider and wallets
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const userWallet = new ethers.Wallet(USER_PRIVATE_KEY, provider);
-    const relayerWallet = new ethers.Wallet(RELAYER_PRIVATE_KEY, provider);
     
     console.log(`User address: ${userWallet.address}`);
-    console.log(`Relayer address: ${relayerWallet.address}`);
+    console.log(`AI Service: ${AI_SERVICE_URL}`);
     
     // Connect to contracts
     const forwarderContract = new ethers.Contract(FORWARDER_ADDRESS, forwarderABI, provider);
     const recipientContract = new ethers.Contract(RECIPIENT_ADDRESS, recipientABI, provider);
     
-    // Test interaction - let's try the original one
-    const interaction = 'liked_post_12345';
-    
-    try {
-        // 1. Check AI validation
-        const isValidInteraction = await checkInteractionValidation(forwarderContract, interaction);
-        
-        if (!isValidInteraction) {
-            console.log('❌ Interaction rejected by AI validation. Exiting.');
-            return;
-        }
-        
-        // 2. Check user's current interactions
-        await checkUserInteractions(recipientContract, userWallet.address);
-        
-        // 3. Sign meta-transaction
-        const { request, signature } = await signMetaTransaction(
-            userWallet, 
-            forwarderContract, 
-            RECIPIENT_ADDRESS, 
-            interaction
-        );
-        
-        // 4. Submit meta-transaction via relayer
-        const receipt = await submitMetaTransaction(relayerWallet, forwarderContract, request, signature);
-        
-        // 5. Check updated interactions
-        console.log('\\n=== Post-Transaction State ===');
-        await checkUserInteractions(recipientContract, userWallet.address);
-        
-        console.log('\\n✅ Meta-transaction completed successfully!');
-        
-    } catch (error) {
-        console.error('\\n❌ Error:', error.message);
-    }
-}
-
-// Handle different interaction types for testing
-async function testDifferentInteractions() {
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const forwarderContract = new ethers.Contract(FORWARDER_ADDRESS, forwarderABI, provider);
-    
+    // Test different interactions
     const testInteractions = [
-        'liked_post_123',
+        'liked_post_12345',
         'comment_great_article',
-        'share_news_item',
-        'follow_user_456',
-        'spam_everyone',  // This should be rejected
-        'invalid_action'  // This should be rejected
+        'share_awesome_content',
+        'spam_everyone_now',  // Should be rejected
+        'hack_the_system'     // Should be rejected
     ];
     
-    console.log('\\n🧪 Testing Different Interactions');
-    console.log('=================================');
-    
     for (const interaction of testInteractions) {
-        await checkInteractionValidation(forwarderContract, interaction);
+        try {
+            console.log(`\\n🧪 Testing interaction: "${interaction}"`);
+            console.log('='.repeat(50));
+            
+            // 1. Test AI validation first
+            await testAIValidation(interaction);
+            
+            // 2. Check user's current interactions
+            await checkUserInteractions(recipientContract, userWallet.address);
+            
+            // 3. Sign meta-transaction
+            const { request } = await signMetaTransaction(
+                userWallet, 
+                forwarderContract, 
+                RECIPIENT_ADDRESS, 
+                interaction
+            );
+            
+            // 4. Submit to AI service for validation and execution
+            const result = await submitToAIService(request);
+            
+            console.log(`\\n🎉 Success! Transaction: ${result.txHash}`);
+            console.log(`📊 AI Decision: ${result.decision.decision}`);
+            console.log(`🎯 Significance: ${result.aiResult.significance}`);
+            console.log(`💭 Reasoning: ${result.aiResult.reasoning}`);
+            
+            // 5. Check updated interactions
+            console.log('\\n=== Post-Transaction State ===');
+            await checkUserInteractions(recipientContract, userWallet.address);
+            
+        } catch (error) {
+            console.error(`\\n❌ Failed for "${interaction}":`, error.message);
+        }
+        
+        // Wait a bit between transactions
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
+    
+    console.log('\\n✅ All tests completed!');
 }
 
 // Export functions for reuse
 module.exports = {
     signMetaTransaction,
-    submitMetaTransaction,
-    checkInteractionValidation,
-    testDifferentInteractions
+    submitToAIService,
+    testAIValidation,
+    checkUserInteractions
 };
 
 // Run if called directly
