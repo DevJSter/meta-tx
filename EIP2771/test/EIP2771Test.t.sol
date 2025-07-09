@@ -33,37 +33,37 @@ contract EIP2771Test is Test {
     
     function testAIValidation() public {
         // Test valid interactions
-        assertTrue(forwarder.validateInteraction("liked_post"));
-        assertTrue(forwarder.validateInteraction("comment_nice"));
-        assertTrue(forwarder.validateInteraction("share_article"));
-        assertTrue(forwarder.validateInteraction("follow_user"));
+        assertTrue(forwarder.validateInteractionBasic("liked_post"));
+        assertTrue(forwarder.validateInteractionBasic("comment_nice"));
+        assertTrue(forwarder.validateInteractionBasic("share_article"));
+        assertTrue(forwarder.validateInteractionBasic("follow_user"));
         
         // Test invalid interactions
-        assertFalse(forwarder.validateInteraction("invalid_action"));
-        assertFalse(forwarder.validateInteraction("spam_user"));
-        assertFalse(forwarder.validateInteraction(""));
+        assertFalse(forwarder.validateInteractionBasic("invalid_action"));
+        assertFalse(forwarder.validateInteractionBasic("spam_user"));
+        assertFalse(forwarder.validateInteractionBasic(""));
     }
     
     function testAddValidationRule() public {
         // Initially, "vote_" should not be valid
-        assertFalse(forwarder.validateInteraction("vote_proposal"));
+        assertFalse(forwarder.validateInteractionBasic("vote_proposal"));
         
         // Add new validation rule
         forwarder.setValidationRule("vote_", true);
         
         // Now it should be valid
-        assertTrue(forwarder.validateInteraction("vote_proposal"));
+        assertTrue(forwarder.validateInteractionBasic("vote_proposal"));
     }
     
     function testRemoveValidationRule() public {
         // Initially, "liked_" should be valid
-        assertTrue(forwarder.validateInteraction("liked_post"));
+        assertTrue(forwarder.validateInteractionBasic("liked_post"));
         
         // Remove validation rule
         forwarder.setValidationRule("liked_", false);
         
         // Now it should be invalid
-        assertFalse(forwarder.validateInteraction("liked_post"));
+        assertFalse(forwarder.validateInteractionBasic("liked_post"));
     }
     
     function testMetaTransactionStructure() public {
