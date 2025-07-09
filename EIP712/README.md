@@ -1,24 +1,24 @@
 # EIP-712 Meta-Transaction Implementation
 
-## 📋 Overview
+## Overview
 
 This implementation demonstrates a **direct EIP-712 signature validation** approach for gasless meta-transactions. It provides a simpler alternative to the EIP-2771 forwarder pattern, with direct signature verification in the contract.
 
-## 🌟 Key Features
+## Key Features
 
-- ✅ **Direct Signature Validation**: No forwarder contracts needed
-- ✅ **EIP-712 Compliance**: Standard structured data signing
-- ✅ **Basic AI Validation**: Content filtering via relayer service
-- ✅ **Lower Gas Costs**: Minimal contract overhead
-- ✅ **Simple Architecture**: Fewer moving parts
+- **Direct Signature Validation**: No forwarder contracts needed
+- **EIP-712 Compliance**: Standard structured data signing
+- **Basic AI Validation**: Content filtering via relayer service
+- **Lower Gas Costs**: Minimal contract overhead
+- **Simple Architecture**: Fewer moving parts
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 User → Signs EIP-712 → Relayer (AI Check) → Contract (Verify & Execute)
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 EIP712/
@@ -40,7 +40,7 @@ EIP712/
 └── README.md                   # This file
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Automated Setup (Recommended)
 
@@ -102,7 +102,7 @@ This will:
    # PRIVATE_KEY=YourRelayerPrivateKey
    ```
 
-## 🎮 Running the System
+## Running the System
 
 ### Start Services
 
@@ -126,7 +126,7 @@ This will:
    node signer.js
    ```
 
-## 🔍 How It Works
+## How It Works
 
 ### EIP-712 Domain Structure
 
@@ -196,7 +196,7 @@ curl -X POST http://localhost:3000/validate \
   -d '{"interaction": "liked_post_123"}'
 ```
 
-## 📊 vs EIP-2771 Comparison
+## vs EIP-2771 Comparison
 
 | Feature | EIP-712 (This) | EIP-2771 |
 |---------|---------------|----------|
@@ -207,7 +207,7 @@ curl -X POST http://localhost:3000/validate \
 | **Forwarder** | Not needed | Required |
 | **AI Integration** | Basic | Advanced |
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -240,7 +240,7 @@ export RPC_URL="http://localhost:9650/ext/bc/YOUR_SUBNET_ID/rpc"
 export CHAIN_ID="930393"
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -277,7 +277,7 @@ cast call CONTRACT_ADDRESS "verify(address,string,uint256,bytes)(bool)" \
   USER_ADDRESS "test_interaction" NONCE SIGNATURE --rpc-url RPC_URL
 ```
 
-## 🛣️ Next Steps
+## Next Steps
 
 ### Immediate Improvements
 - Enhanced AI validation models
@@ -291,17 +291,17 @@ cast call CONTRACT_ADDRESS "verify(address,string,uint256,bytes)(bool)" \
 - Multi-network deployment
 - Monitoring and analytics
 
-## 📚 References
+## References
 
 - [EIP-712 Specification](https://eips.ethereum.org/EIPS/eip-712)
 - [Foundry Documentation](https://book.getfoundry.sh/)
 - [Ollama Documentation](https://ollama.ai/docs)
 - [Ethers.js Documentation](https://docs.ethers.org/)
 
-## 📄 License
+## License
 
 MIT License - Compatible with all dependencies
 
 ---
 
-**Simple, efficient, and effective meta-transactions! 🚀**
+**Simple, efficient, and effective meta-transactions!**

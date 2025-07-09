@@ -1,17 +1,17 @@
 # EIP-2771 Client - Meta-Transaction Signer
 
-## 📋 Overview
+## Overview
 
 This client demonstrates how to sign and submit EIP-2771 meta-transactions to an AI-validated forwarder. It showcases gasless transactions where users sign meta-transactions that are executed by a relayer with AI content validation.
 
-## 🏗️ How It Works
+## How It Works
 
 1. **User Signs Meta-Transaction**: Using EIP-712 structured data signing
 2. **Submits to AI Service**: Sends signed meta-tx to AI validation service
 3. **AI Validates Content**: Ollama LLM analyzes interaction content
 4. **Executes if Approved**: AI service relays to forwarder contract if valid
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -59,23 +59,23 @@ node signer.js
 
 The client tests various interactions to demonstrate AI validation:
 
-### ✅ Approved Interactions
+### Approved Interactions
 ```javascript
 'liked_post_12345'        // Social engagement
 'comment_great_article'   // Constructive feedback  
 'share_awesome_content'   // Content sharing
 ```
 
-### ❌ Rejected Interactions
+### Rejected Interactions
 ```javascript
 'spam_everyone_now'       // Spam content
 'hack_the_system'         // Potentially malicious
 ```
 
-## 📊 Expected Output
+## Expected Output
 
 ```bash
-🚀 EIP-2771 Ollama AI Meta-Transaction Client Started
+EIP-2771 Ollama AI Meta-Transaction Client Started
 ==================================================
 User address: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 AI Service: http://localhost:3001
@@ -110,8 +110,8 @@ Meta-transaction request: {
 Signature: 0x1234...
 
 === Submitting to AI Validation Service ===
-📡 Sending request to AI service...
-✅ AI Service Response: {
+Sending request to AI service...
+AI Service Response: {
   txHash: '0x5678...',
   blockNumber: 42,
   gasUsed: '85000',
@@ -120,13 +120,13 @@ Signature: 0x1234...
   interaction: 'liked_post_12345'
 }
 
-🎉 Success! Transaction: 0x5678...
-📊 AI Decision: APPROVED
-🎯 Significance: 1
-💭 Reasoning: Positive social interaction
+Success! Transaction: 0x5678...
+AI Decision: APPROVED
+Significance: 1
+Reasoning: Positive social interaction
 ```
 
-## 🔧 Key Functions
+## Key Functions
 
 ### `signMetaTransaction()`
 Creates and signs an EIP-712 meta-transaction:
@@ -183,7 +183,7 @@ async function testAIValidation(interaction) {
 }
 ```
 
-## 🔍 EIP-712 Structure
+## EIP-712 Structure
 
 The client uses EIP-712 to sign ForwardRequest structures:
 
@@ -208,15 +208,15 @@ const types = {
 };
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
 1. **"Network Error: Do not know how to serialize a BigInt"**
    ```javascript
    // Ensure nonce is converted to Number
-   nonce: Number(nonce)  // ✅ Correct
-   nonce: nonce         // ❌ BigInt serialization error
+   nonce: Number(nonce)  // Correct
+   nonce: nonce         // BigInt serialization error
    ```
 
 2. **"Invalid signature" error**
@@ -242,7 +242,7 @@ const types = {
    # Check network configuration
    ```
 
-## 📈 Customization
+## Customization
 
 ### Add New Test Interactions
 
@@ -268,7 +268,7 @@ const RPC_URL = 'https://your-network-rpc.com';
 const CHAIN_ID = 12345;
 ```
 
-## 🚀 Next Steps
+## Next Steps
 
 1. **Frontend Integration**: Use this client logic in a React/Vue app
 2. **Wallet Integration**: Connect MetaMask or other wallets

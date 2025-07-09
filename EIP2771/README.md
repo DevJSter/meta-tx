@@ -1,19 +1,19 @@
 # EIP-2771 Meta-Transaction System with AI Validation
 
-## 📋 Overview
+## Overview
 
 This implementation demonstrates an **EIP-2771 gasless meta-transaction system** with **Ollama AI validation**. Users sign meta-transactions that are executed by a relayer, with AI-powered content moderation happening before any gas is spent.
 
-## 🌟 Key Features
+## Key Features
 
-- ✅ **Gasless Transactions**: Users don't need ETH for gas fees
-- ✅ **AI Content Moderation**: Ollama-powered semantic validation
-- ✅ **EIP-2771 Standard**: Full compliance with meta-transaction standard
-- ✅ **Significance Scoring**: AI confidence-based decision making
-- ✅ **Fallback Validation**: Basic pattern matching as backup
-- ✅ **Real-time Processing**: Immediate AI feedback
+- **Gasless Transactions**: Users don't need ETH for gas fees
+- **AI Content Moderation**: Ollama-powered semantic validation
+- **EIP-2771 Standard**: Full compliance with meta-transaction standard
+- **Significance Scoring**: AI confidence-based decision making
+- **Fallback Validation**: Basic pattern matching as backup
+- **Real-time Processing**: Immediate AI feedback
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 User → Signs Meta-Tx → AI Service → Validates Content → Forwarder → Target Contract
@@ -21,7 +21,7 @@ User → Signs Meta-Tx → AI Service → Validates Content → Forwarder → Ta
                     Ollama LLM Model
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 EIP2771/
@@ -41,7 +41,7 @@ EIP2771/
 └── README.md                         # This file
 ```
 
-## 🚀 Complete Setup Guide
+## Complete Setup Guide
 
 ### Prerequisites
 
@@ -142,7 +142,7 @@ npm start
 node signer.js
 ```
 
-## 🎮 Running the Complete System
+## Running the Complete System
 
 ### Terminal Setup (4 terminals needed)
 
@@ -175,7 +175,7 @@ node ollama-ai-service.js
 # You should see:
 # 🤖 EIP-2771 Ollama AI Validation Service
 # =======================================
-# 🌐 EIP-2771 AI Validation Service running on port 3001
+# EIP-2771 AI Validation Service running on port 3001
 ```
 
 #### Terminal 4: Client
@@ -188,7 +188,7 @@ node signer.js
 # This will test multiple interactions and show AI decisions
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### 1. Update Contract Addresses
 
@@ -245,20 +245,20 @@ node signer.js
 
 Expected output:
 ```
-🚀 EIP-2771 Ollama AI Meta-Transaction Client Started
+EIP-2771 Ollama AI Meta-Transaction Client Started
 ==================================================
 
 🧪 Testing interaction: "liked_post_12345"
 🤖 AI Test Result: { approved: true, significance: 1.0 }
-✅ Success! Transaction: 0x123...
-🎯 AI Decision: APPROVED
+Success! Transaction: 0x123...
+AI Decision: APPROVED
 
 🧪 Testing interaction: "spam_everyone_now"  
 🤖 AI Test Result: { approved: false, significance: 1.0 }
-❌ Failed: AI Validation failed: Transaction rejected by AI validation
+Failed: AI Validation failed: Transaction rejected by AI validation
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -298,26 +298,26 @@ Expected output:
    node ollama-ai-service.js
    ```
 
-## 🎉 Success Indicators
+## Success Indicators
 
 If everything is working correctly, you should see:
 
-1. ✅ Ollama responding to API calls
-2. ✅ AI service running on port 3001
-3. ✅ Contracts deployed and accessible
-4. ✅ Client successfully signing meta-transactions
-5. ✅ AI making correct approval/rejection decisions
-6. ✅ Meta-transactions executing on-chain (for approved content)
+1. Ollama responding to API calls
+2. AI service running on port 3001
+3. Contracts deployed and accessible
+4. Client successfully signing meta-transactions
+5. AI making correct approval/rejection decisions
+6. Meta-transactions executing on-chain (for approved content)
 
-This represents a **complete gasless meta-transaction system with AI validation** - a significant advancement in blockchain UX and content moderation! 🚀
+This represents a **complete gasless meta-transaction system with AI validation** - a significant advancement in blockchain UX and content moderation!
 
-## 📚 Documentation Links
+## Documentation Links
 
 - [EIP-2771 Specification](https://eips.ethereum.org/EIPS/eip-2771)
 - [OpenZeppelin ERC2771](https://docs.openzeppelin.com/contracts/4.x/api/metatx)
 - [Ollama Documentation](https://ollama.ai/docs)
 - [Foundry Book](https://book.getfoundry.sh/)
 
-## 📄 License
+## License
 
 MIT License - Compatible with OpenZeppelin contracts

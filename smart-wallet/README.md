@@ -587,7 +587,7 @@ class SecurityMonitor {
 }
 ```
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
 ### 1. **Multi-Chain Support**
 - Seamless cross-chain operations
@@ -612,7 +612,7 @@ class SecurityMonitor {
 - Shared wallets for families/teams
 - Social trading features
 
-## 📚 Additional Resources
+## Additional Resources
 
 - [EIP-2771 Specification](https://eips.ethereum.org/EIPS/eip-2771)
 - [EIP-712 Specification](https://eips.ethereum.org/EIPS/eip-712)
@@ -620,7 +620,7 @@ class SecurityMonitor {
 - [OpenZeppelin Meta-Transactions](https://docs.openzeppelin.com/contracts/4.x/api/metatx)
 - [Ollama AI Documentation](https://ollama.com/docs)
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -628,7 +628,7 @@ class SecurityMonitor {
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 

@@ -2,7 +2,7 @@
 
 This project demonstrates two different approaches to meta-transactions with AI validation on Ethereum-compatible blockchains. It showcases both **EIP-712** (direct signature validation) and **EIP-2771** (forwarder-based) implementations, each with their unique advantages.
 
-## 🚀 Quick Start
+## Quick Start
 
 **One-line setup for everything:**
 
@@ -18,16 +18,16 @@ This interactive script will guide you through setting up either or both impleme
 
 *Diagram: High-level architecture showing the interaction between Client, AI Service, and Smart Contracts.*
 
-## 🎯 Two Implementations Available
+## Two Implementations Available
 
-### 1. 🔐 EIP-712 Implementation (`EIP712/`)
+### 1. EIP-712 Implementation (`EIP712/`)
 Direct signature validation approach:
 - **Simple & Efficient**: Direct signature verification in contract
 - **Lower Gas Costs**: Minimal overhead
 - **Basic AI Validation**: Relayer with AI content checking
 - **Great for**: Simple meta-transaction needs
 
-### 2. 🔄 EIP-2771 Implementation (`EIP2771/`)
+### 2. EIP-2771 Implementation (`EIP2771/`)
 Standard-compliant forwarder approach:
 - **Advanced AI Validation**: Sophisticated content moderation using Ollama
 - **Standard Compliant**: Full EIP-2771 implementation
@@ -38,24 +38,24 @@ Standard-compliant forwarder approach:
 ## Features
 
 ### Common Features
-- ✅ **Gasless Transactions**: Users don't need ETH for gas fees
-- ✅ **AI Validation**: Transactions validated by AI before execution
-- ✅ **Nonce Management**: Prevents replay attacks
-- ✅ **Secure Signatures**: EIP-712 structured data signing
+- **Gasless Transactions**: Users don't need ETH for gas fees
+- **AI Validation**: Transactions validated by AI before execution
+- **Nonce Management**: Prevents replay attacks
+- **Secure Signatures**: EIP-712 structured data signing
 
 ### EIP-2771 Exclusive Features
-- 🤖 **Ollama Integration**: Local LLM for content moderation
-- 📊 **Significance Scoring**: Automatic transaction importance assessment
-- 🛡️ **Advanced Controls**: Owner/validator permissions, thresholds
-- 🔄 **Standard Compliance**: Full EIP-2771 forwarder pattern
+- **Ollama Integration**: Local LLM for content moderation
+- **Significance Scoring**: Automatic transaction importance assessment
+- **Advanced Controls**: Owner/validator permissions, thresholds
+- **Standard Compliance**: Full EIP-2771 forwarder pattern
 
 ## Project Structure
 
 ```
 new-ai-validator/
-├── setup.sh                     # 🚀 Main setup script
-├── DIFFERENCE.md                 # 📊 Implementation comparison
-├── EIP712/                      # 🔐 EIP-712 Implementation
+├── setup.sh                     # Main setup script
+├── DIFFERENCE.md                 # Implementation comparison
+├── EIP712/                      # EIP-712 Implementation
 │   ├── setup.sh                 # Automated setup for EIP-712
 │   ├── contracts/
 │   │   ├── src/EIPMetaTx.sol    # Direct signature meta-tx contract
@@ -65,7 +65,7 @@ new-ai-validator/
 │   │   ├── index.js             # Basic relayer service
 │   │   └── ollama-relayer.js    # AI validation relayer
 │   └── README.md                # EIP-712 documentation
-├── EIP2771/                     # 🔄 EIP-2771 Implementation
+├── EIP2771/                     # EIP-2771 Implementation
 │   ├── setup.sh                 # Automated setup for EIP-2771
 │   ├── src/
 │   │   ├── AIValidatedForwarder.sol      # AI-powered forwarder
@@ -73,9 +73,9 @@ new-ai-validator/
 │   ├── ollama-ai-service.js     # AI validation service
 │   ├── client/signer.js         # EIP-2771 client
 │   └── README.md                # EIP-2771 documentation
-├── client/                      # 🔐 Legacy EIP-712 Client
+├── client/                      # Legacy EIP-712 Client
 │   └── README.md                # Legacy client documentation
-└── relayer/                     # 🔐 Legacy EIP-712 Relayer
+└── relayer/                     # Legacy EIP-712 Relayer
     └── README.md                # Legacy relayer documentation
 ```
 
@@ -87,7 +87,7 @@ Before running the setup scripts, ensure you have:
 - **Foundry** (latest version) - [Installation guide](https://book.getfoundry.sh/getting-started/installation)
 - **Ollama** (for AI validation) - [Download here](https://ollama.ai/)
 
-## 🛠️ Installation & Setup
+## Installation & Setup
 
 ### Option 1: Interactive Setup (Recommended)
 
@@ -135,7 +135,7 @@ export OLLAMA_MODEL="llama3.2:latest"
 ./setup.sh
 ```
 
-## 🎮 Running the System
+## Running the System
 
 After setup, follow these steps based on your chosen implementation:
 
@@ -163,7 +163,7 @@ cd EIP2771/client/
 node signer.js
 ```
 
-## 🔍 How It Works
+## How It Works
 
 ### EIP-712 Flow (Direct Signatures)
 1. **Client Signs**: Creates EIP-712 signature for meta-transaction
@@ -251,7 +251,7 @@ The EIP-2771 implementation provides detailed AI analysis of interaction content
    - Verify the EIP-712 domain parameters match between client and contract
 
 2. **"Contract not found" error**:
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -312,7 +312,7 @@ cast logs --from-block latest --address $CONTRACT_ADDRESS --rpc-url $RPC_URL
 cast call $CONTRACT_ADDRESS "nonces(address)(uint256)" $USER_ADDRESS --rpc-url $RPC_URL
 ```
 
-## 📊 Implementation Comparison
+## Implementation Comparison
 
 | Feature | EIP-712 | EIP-2771 |
 |---------|---------|----------|
@@ -325,7 +325,7 @@ cast call $CONTRACT_ADDRESS "nonces(address)(uint256)" $USER_ADDRESS --rpc-url $
 
 For detailed comparison, see [`DIFFERENCE.md`](./DIFFERENCE.md).
 
-## 📚 Documentation
+## Documentation
 
 - **[EIP-712 Guide](EIP712/README.md)**: Detailed EIP-712 setup and usage
 - **[EIP-2771 Guide](EIP2771/README.md)**: Comprehensive EIP-2771 documentation  
@@ -333,7 +333,7 @@ For detailed comparison, see [`DIFFERENCE.md`](./DIFFERENCE.md).
 - **[Legacy Client Documentation](client/README.md)**: Legacy EIP-712 client
 - **[Legacy Relayer Documentation](relayer/README.md)**: Legacy EIP-712 relayer
 
-## 🛣️ Next Steps
+## Next Steps
 
 ### Immediate Improvements
 1. **Enhanced AI Models**: Integrate GPT-4, Claude, or specialized content models
@@ -353,9 +353,9 @@ For detailed comparison, see [`DIFFERENCE.md`](./DIFFERENCE.md).
 3. **Machine Learning**: Adaptive validation thresholds
 4. **Cross-chain**: Enable meta-transactions across networks
 
-## 🔒 Security Considerations
+## Security Considerations
 
-⚠️ **Important**: This is a demonstration project. For production use:
+**Important**: This is a demonstration project. For production use:
 
 - **Key Management**: Use secure key storage (HSM, KMS)
 - **Private Networks**: Don't expose private keys in code
@@ -364,7 +364,7 @@ For detailed comparison, see [`DIFFERENCE.md`](./DIFFERENCE.md).
 - **Monitoring**: Add real-time security monitoring
 - **Access Controls**: Implement proper authentication/authorization
 
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! Areas of interest:
 
@@ -375,12 +375,12 @@ Contributions welcome! Areas of interest:
 - Frontend implementations
 - Testing and QA
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Happy meta-transacting! 🚀🤖**
+**Happy meta-transacting!**
 
-*Built with ❤️ for the Ethereum community*
+*Built with love for the Ethereum community*
