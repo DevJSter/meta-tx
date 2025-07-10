@@ -130,7 +130,7 @@ fi
 
 # Install Foundry dependencies
 print_info "Installing Foundry dependencies..."
-forge install --no-commit
+forge install 
 print_status "Foundry dependencies installed"
 
 # Build contracts
