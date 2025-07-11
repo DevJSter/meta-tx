@@ -7,3 +7,6 @@
 [submodule "EIP2771/lib/forge-std"]
 	path = EIP2771/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "EIP2771-paymaster/contracts/lib/forge-std"]
+	path = EIP2771-paymaster/contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std

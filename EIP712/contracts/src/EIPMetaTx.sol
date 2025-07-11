@@ -14,9 +14,7 @@ contract MetaTxInteraction {
         uint256 nonce;
     }
 
-    bytes32 public constant META_TX_TYPEHASH = keccak256(
-        "MetaTx(address user,string interaction,uint256 nonce)"
-    );
+    bytes32 public constant META_TX_TYPEHASH = keccak256("MetaTx(address user,string interaction,uint256 nonce)");
 
     mapping(address => uint256) public nonces;
     bytes32 public DOMAIN_SEPARATOR;
@@ -24,9 +22,7 @@ contract MetaTxInteraction {
     constructor() {
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
-                keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                ),
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
                 keccak256(bytes("QoneqtMetaTx")),
                 keccak256(bytes("1")),
                 block.chainid,
@@ -35,26 +31,16 @@ contract MetaTxInteraction {
         );
     }
 
-    function executeMetaTx(
-        address user,
-        string calldata interaction,
-        uint256 nonce,
-        bytes calldata signature
-    ) external {
+    function executeMetaTx(address user, string calldata interaction, uint256 nonce, bytes calldata signature)
+        external
+    {
         require(nonce == nonces[user], "Invalid nonce");
 
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
                 DOMAIN_SEPARATOR,
-                keccak256(
-                    abi.encode(
-                        META_TX_TYPEHASH,
-                        user,
-                        keccak256(bytes(interaction)),
-                        nonce
-                    )
-                )
+                keccak256(abi.encode(META_TX_TYPEHASH, user, keccak256(bytes(interaction)), nonce))
             )
         );
 
