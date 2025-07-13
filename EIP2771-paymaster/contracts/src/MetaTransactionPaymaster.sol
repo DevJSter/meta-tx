@@ -2,16 +2,18 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./Forwarder.sol";
+import "./EIP2771Forwarder.sol";
+import "./interfaces/IMetaTransactionPaymaster.sol";
 
 /**
- * @title Paymaster
- * @dev Paymaster contract for sponsoring meta-transactions
+ * @title MetaTransactionPaymaster
+ * @dev Professional paymaster contract for sponsoring meta-transactions
+ * @notice This contract manages gas payments and sponsorship for meta-transactions
  */
-contract Paymaster is Ownable, ReentrancyGuard {
+contract MetaTransactionPaymaster is IMetaTransactionPaymaster, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     struct PaymasterRequest {
@@ -28,7 +30,7 @@ contract Paymaster is Ownable, ReentrancyGuard {
         uint256 deadline;
     }
 
-    MinimalForwarder public immutable forwarder;
+    EIP2771Forwarder public immutable forwarder;
     
     mapping(address => bool) public sponsoredContracts;
     mapping(address => bool) public whitelistedTokens;
@@ -39,29 +41,17 @@ contract Paymaster is Ownable, ReentrancyGuard {
     uint256 public feeMultiplier = 120; // 120% of actual gas cost
     uint256 public maxGasLimit = 500000;
     
-    event TransactionSponsored(
-        address indexed user,
-        address indexed target,
-        uint256 gasUsed,
-        uint256 fee,
-        address paymentToken,
-        uint256 paymentAmount
-    );
-    
-    event ContractSponsored(address indexed contractAddress, bool sponsored);
     event TokenWhitelisted(address indexed token, bool whitelisted);
-    event CreditDeposited(address indexed user, uint256 amount);
-    event CreditWithdrawn(address indexed user, uint256 amount);
     event TokenDeposited(address indexed user, address indexed token, uint256 amount);
     event TokenWithdrawn(address indexed user, address indexed token, uint256 amount);
     
     modifier onlyForwarder() {
-        require(msg.sender == address(forwarder), "Paymaster: caller is not the forwarder");
+        require(msg.sender == address(forwarder), "MetaTransactionPaymaster: caller is not the forwarder");
         _;
     }
     
-    constructor(address _forwarder) {
-        forwarder = MinimalForwarder(_forwarder);
+    constructor(address _forwarder, address initialOwner) Ownable(initialOwner) {
+        forwarder = EIP2771Forwarder(_forwarder);
     }
     
     /**
@@ -69,7 +59,7 @@ contract Paymaster is Ownable, ReentrancyGuard {
      */
     function setSponsoredContract(address contractAddress, bool sponsored) external onlyOwner {
         sponsoredContracts[contractAddress] = sponsored;
-        emit ContractSponsored(contractAddress, sponsored);
+        emit SponsorshipConfigUpdated(contractAddress, sponsored);
     }
     
     /**
@@ -93,27 +83,27 @@ contract Paymaster is Ownable, ReentrancyGuard {
      * @dev Deposit ETH credits for a user
      */
     function depositCredits(address user) external payable {
-        require(msg.value > 0, "Paymaster: no ETH sent");
+        require(msg.value > 0, "MetaTransactionPaymaster: no ETH sent");
         userCredits[user] += msg.value;
-        emit CreditDeposited(user, msg.value);
+        emit FundsUpdated(user, msg.value, true);
     }
     
     /**
      * @dev Withdraw ETH credits
      */
     function withdrawCredits(uint256 amount) external nonReentrant {
-        require(userCredits[msg.sender] >= amount, "Paymaster: insufficient credits");
+        require(userCredits[msg.sender] >= amount, "MetaTransactionPaymaster: insufficient credits");
         userCredits[msg.sender] -= amount;
         payable(msg.sender).transfer(amount);
-        emit CreditWithdrawn(msg.sender, amount);
+        emit FundsUpdated(msg.sender, amount, false);
     }
     
     /**
      * @dev Deposit tokens for gas payment
      */
     function depositToken(address token, uint256 amount) external {
-        require(whitelistedTokens[token], "Paymaster: token not whitelisted");
-        require(amount > 0, "Paymaster: amount must be greater than 0");
+        require(whitelistedTokens[token], "MetaTransactionPaymaster: token not whitelisted");
+        require(amount > 0, "MetaTransactionPaymaster: amount must be greater than 0");
         
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         tokenBalances[msg.sender][token] += amount;
@@ -124,21 +114,21 @@ contract Paymaster is Ownable, ReentrancyGuard {
      * @dev Withdraw tokens
      */
     function withdrawToken(address token, uint256 amount) external nonReentrant {
-        require(tokenBalances[msg.sender][token] >= amount, "Paymaster: insufficient token balance");
+        require(tokenBalances[msg.sender][token] >= amount, "MetaTransactionPaymaster: insufficient token balance");
         tokenBalances[msg.sender][token] -= amount;
         IERC20(token).safeTransfer(msg.sender, amount);
         emit TokenWithdrawn(msg.sender, token, amount);
     }
     
     /**
-     * @dev Sponsor a meta-transaction
+     * @dev Sponsor a meta-transaction (only callable by forwarder)
      */
     function sponsorTransaction(
-        MinimalForwarder.ForwardRequest calldata req,
+        EIP2771Forwarder.ForwardRequest calldata req,
         bytes calldata signature
-    ) external nonReentrant returns (bool success, bytes memory returndata) {
-        require(sponsoredContracts[req.to], "Paymaster: contract not sponsored");
-        require(req.gas <= maxGasLimit, "Paymaster: gas limit too high");
+    ) external onlyForwarder nonReentrant returns (bool success, bytes memory returndata) {
+        require(sponsoredContracts[req.to], "MetaTransactionPaymaster: contract not sponsored");
+        require(req.gas <= maxGasLimit, "MetaTransactionPaymaster: gas limit too high");
         
         uint256 gasStart = gasleft();
         
@@ -149,24 +139,24 @@ contract Paymaster is Ownable, ReentrancyGuard {
         uint256 fee = (gasUsed * tx.gasprice * feeMultiplier) / 100;
         
         // Deduct from user credits
-        require(userCredits[req.from] >= fee, "Paymaster: insufficient credits");
+        require(userCredits[req.from] >= fee, "MetaTransactionPaymaster: insufficient credits");
         userCredits[req.from] -= fee;
         
         emit TransactionSponsored(req.from, req.to, gasUsed, fee, address(0), 0);
     }
     
     /**
-     * @dev Sponsor a meta-transaction with token payment
+     * @dev Sponsor a meta-transaction with token payment (only callable by forwarder)
      */
     function sponsorTransactionWithToken(
-        MinimalForwarder.ForwardRequest calldata req,
+        EIP2771Forwarder.ForwardRequest calldata req,
         bytes calldata signature,
         address paymentToken,
         uint256 paymentAmount
-    ) external nonReentrant returns (bool success, bytes memory returndata) {
-        require(sponsoredContracts[req.to], "Paymaster: contract not sponsored");
-        require(req.gas <= maxGasLimit, "Paymaster: gas limit too high");
-        require(whitelistedTokens[paymentToken], "Paymaster: payment token not whitelisted");
+    ) external onlyForwarder nonReentrant returns (bool success, bytes memory returndata) {
+        require(sponsoredContracts[req.to], "MetaTransactionPaymaster: contract not sponsored");
+        require(req.gas <= maxGasLimit, "MetaTransactionPaymaster: gas limit too high");
+        require(whitelistedTokens[paymentToken], "MetaTransactionPaymaster: payment token not whitelisted");
         
         uint256 gasStart = gasleft();
         
@@ -176,7 +166,7 @@ contract Paymaster is Ownable, ReentrancyGuard {
         uint256 gasUsed = gasStart - gasleft() + baseFee;
         
         // Deduct from user token balance
-        require(tokenBalances[req.from][paymentToken] >= paymentAmount, "Paymaster: insufficient token balance");
+        require(tokenBalances[req.from][paymentToken] >= paymentAmount, "MetaTransactionPaymaster: insufficient token balance");
         tokenBalances[req.from][paymentToken] -= paymentAmount;
         
         emit TransactionSponsored(req.from, req.to, gasUsed, 0, paymentToken, paymentAmount);
@@ -189,14 +179,65 @@ contract Paymaster is Ownable, ReentrancyGuard {
         uint256 estimatedFee = (gasLimit * tx.gasprice * feeMultiplier) / 100;
         return userCredits[user] >= estimatedFee;
     }
+
+    /**
+     * @dev Check if a user has sufficient credits for a transaction (interface implementation)
+     */
+    function hassufficientCredits(address user, uint256 gasLimit) external view returns (bool) {
+        uint256 estimatedFee = (gasLimit * tx.gasprice * feeMultiplier) / 100;
+        return userCredits[user] >= estimatedFee;
+    }
     
     /**
      * @dev Get estimated fee for a transaction
      */
     function getEstimatedFee(uint256 gasLimit) external view returns (uint256) {
-        return (gasLimit * tx.gasprice * feeMultiplier) / 100;
+        uint256 gasPrice = tx.gasprice > 0 ? tx.gasprice : 1 gwei;
+        return (gasLimit * gasPrice * feeMultiplier) / 100;
     }
     
+    /**
+     * @dev Check if paymaster can sponsor a transaction (called by forwarder)
+     */
+    function canSponsorTransaction(address user, address target, uint256 gasLimit) 
+        external 
+        view 
+        returns (bool) 
+    {
+        if (!sponsoredContracts[target]) return false;
+        if (gasLimit > maxGasLimit) return false;
+        
+        uint256 estimatedFee = (gasLimit * (tx.gasprice > 0 ? tx.gasprice : 1 gwei) * feeMultiplier) / 100;
+        return userCredits[user] >= estimatedFee;
+    }
+    
+    /**
+     * @dev Pay for a transaction (called by forwarder after execution)
+     */
+    function processPayment(address user, address target, uint256 gasUsed, uint256 gasPrice) 
+        public 
+        onlyForwarder 
+    {
+        require(sponsoredContracts[target], "MetaTransactionPaymaster: contract not sponsored");
+        
+        uint256 fee = (gasUsed * (gasPrice > 0 ? gasPrice : 1 gwei) * feeMultiplier) / 100;
+        require(userCredits[user] >= fee, "MetaTransactionPaymaster: insufficient credits");
+        
+        userCredits[user] -= fee;
+        emit TransactionSponsored(user, target, gasUsed, fee, address(0), 0);
+    }
+
+    /**
+     * @dev Pay for a transaction (legacy method name for backward compatibility)
+     */
+    function payForTransaction(address user, address target, uint256 gasUsed, uint256 gasPrice) 
+        external 
+        onlyForwarder 
+        nonReentrant 
+    {
+        processPayment(user, target, gasUsed, gasPrice);
+    }
+
     /**
      * @dev Emergency withdrawal function for owner
      */

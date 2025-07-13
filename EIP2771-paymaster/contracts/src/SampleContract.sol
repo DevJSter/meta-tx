@@ -15,12 +15,12 @@ contract SampleERC2771Contract is ERC2771Context, Ownable {
     event BalanceUpdated(address indexed user, uint256 newBalance);
     event MessageUpdated(address indexed user, string message);
     
-    constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {}
+    constructor(address trustedForwarder, address initialOwner) ERC2771Context(trustedForwarder) Ownable(initialOwner) {}
     
     /**
      * @dev Update user balance (using meta-transaction sender)
      */
-    function updateBalance(uint256 amount) external {
+    function updateBalance(uint256 amount) external payable {
         address user = _msgSender(); // This will be the original sender, not the forwarder
         balances[user] += amount;
         emit BalanceUpdated(user, balances[user]);
@@ -29,7 +29,7 @@ contract SampleERC2771Contract is ERC2771Context, Ownable {
     /**
      * @dev Set user message (using meta-transaction sender)
      */
-    function setMessage(string calldata message) external {
+    function setMessage(string calldata message) external payable {
         address user = _msgSender(); // This will be the original sender, not the forwarder
         userMessages[user] = message;
         emit MessageUpdated(user, message);
@@ -50,16 +50,22 @@ contract SampleERC2771Contract is ERC2771Context, Ownable {
     }
     
     /**
+     * @dev Allow the contract to receive ETH
+     */
+    receive() external payable {
+        // Contract can receive ETH
+    }
+
+    /**
      * @dev Override to use ERC2771Context version
      */
     function _msgSender() internal view override(Context, ERC2771Context) returns (address) {
         return ERC2771Context._msgSender();
     }
-    
-    /**
-     * @dev Override to use ERC2771Context version
-     */
     function _msgData() internal view override(Context, ERC2771Context) returns (bytes calldata) {
         return ERC2771Context._msgData();
+    }
+    function _contextSuffixLength() internal view override(Context, ERC2771Context) returns (uint256) {
+        return ERC2771Context._contextSuffixLength();
     }
 }

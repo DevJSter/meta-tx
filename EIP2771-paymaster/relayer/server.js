@@ -8,13 +8,15 @@ app.use(express.json());
 // Contract ABIs
 const FORWARDER_ABI = [
     "function getNonce(address from) view returns (uint256)",
-    "function verify(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature) view returns (bool)",
-    "function execute(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature) returns (bool, bytes)"
+    "function verifySignature(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature) view returns (bool)",
+    "function executeMetaTransaction(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature) returns (bool, bytes)",
+    "function executeSponsoredTransaction(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature, address paymaster) returns (bool, bytes)"
 ];
 
 const PAYMASTER_ABI = [
     "function sponsorTransaction(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature) returns (bool, bytes)",
-    "function canAffordTransaction(address user, uint256 gasLimit) view returns (bool)"
+    "function canAffordTransaction(address user, uint256 gasLimit) view returns (bool)",
+    "function canSponsorTransaction(address user, address target, uint256 gasLimit) view returns (bool)"
 ];
 
 class RelayerService {
@@ -28,7 +30,7 @@ class RelayerService {
     async relayTransaction(request, signature) {
         try {
             // Verify the request
-            const isValid = await this.forwarder.verify(request, signature);
+            const isValid = await this.forwarder.verifySignature(request, signature);
             if (!isValid) {
                 throw new Error("Invalid signature");
             }

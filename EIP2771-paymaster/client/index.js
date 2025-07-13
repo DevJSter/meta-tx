@@ -4,8 +4,9 @@ require('dotenv').config();
 // Contract ABIs (simplified)
 const FORWARDER_ABI = [
     "function getNonce(address from) view returns (uint256)",
-    "function verify(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature) view returns (bool)",
-    "function execute(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature) returns (bool, bytes)"
+    "function verifySignature(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature) view returns (bool)",
+    "function executeMetaTransaction(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature) returns (bool, bytes)",
+    "function executeSponsoredTransaction(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) req, bytes signature, address paymaster) returns (bool, bytes)"
 ];
 
 const PAYMASTER_ABI = [
@@ -13,7 +14,8 @@ const PAYMASTER_ABI = [
     "function depositCredits(address user) payable",
     "function userCredits(address user) view returns (uint256)",
     "function getEstimatedFee(uint256 gasLimit) view returns (uint256)",
-    "function canAffordTransaction(address user, uint256 gasLimit) view returns (bool)"
+    "function canAffordTransaction(address user, uint256 gasLimit) view returns (bool)",
+    "function canSponsorTransaction(address user, address target, uint256 gasLimit) view returns (bool)"
 ];
 
 const SAMPLE_CONTRACT_ABI = [
@@ -37,7 +39,7 @@ class MetaTransactionClient {
         
         // EIP-712 domain
         this.domain = {
-            name: "MinimalForwarder",
+            name: "EIP2771Forwarder",
             version: "0.0.1",
             chainId: process.env.CHAIN_ID || 31337,
             verifyingContract: forwarderAddress
@@ -83,7 +85,7 @@ class MetaTransactionClient {
             const signature = await this.signForwardRequest(request);
             
             console.log("Verifying signature...");
-            const isValid = await this.forwarder.verify(request, signature);
+            const isValid = await this.forwarder.verifySignature(request, signature);
             if (!isValid) {
                 throw new Error("Invalid signature");
             }
