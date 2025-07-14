@@ -1,0 +1,42 @@
+ ```json
+ const rawData =  { 
+ "creatorAddress" : "" , 
+ "interactorAddress" : "" , 
+ "interaction" : {
+  "interactionType" : "" , 
+  "data": ""
+ },
+ "timestamp" : ""
+}
+```
+
+
+
+   > there may be times for post creation wen creator and interactoraddress may be same then it would accepted as a post creation || if comments likes any then the creator and interactorAddress may change 
+
+
+```json
+const AIResponse = { 
+ "creatorAddress" : "" , 
+ "interactorAddress" : "" , 
+ "interaction" : {
+  "interactionType" : "" , 
+  "data": ""
+ },
+ "validation" : { 
+  "aiAgentResponseApproved ? " : "boolean" , 
+  "aiAgentResponseReasoning" : "?",
+  "significanceScore" : "number"
+ },
+ "timestamp" : "",
+}
+```
+
+
+```json 
+const reWardDistributor = new ethers.createContract("RewardContract") ;
+
+
+
+```
+

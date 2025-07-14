@@ -5,7 +5,13 @@ const provider = new ethers.JsonRpcProvider('http://localhost:9650/ext/bc/HekfYr
 const contractAddress = '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6'; // Updated to match relayer
 
 // Create a wallet (user)
-const privateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
+// const pvtk1 = '0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97';
+// const pvtk2 = '0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6';
+
+// const creatorAddress = new ethers.Wallet(pvtk1, provider).address;
+// const interactorAddress = new ethers.Wallet(pvtk2, provider).address;
+
+const privateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 const userWallet = new ethers.Wallet(privateKey, provider);
 
 // EIP-712 domain and types
@@ -29,7 +35,7 @@ async function signAndSend() {
   
   // Get the current nonce for the user from the relayer endpoint
   try {
-    const nonceResponse = await axios.get(`http://localhost:3001/nonce/${userWallet.address}`);
+    const nonceResponse = await axios.get(`http://localhost:8000/nonce/${userWallet.address}`);
     const nonce = parseInt(nonceResponse.data.nonce);
     
     console.log(`User: ${userWallet.address}`);
@@ -45,7 +51,7 @@ async function signAndSend() {
     const signature = await userWallet.signTypedData(domain, types, value);
 
     try {
-      const res = await axios.post('http://localhost:3001/relayMetaTx', {
+      const res = await axios.post('http://localhost:8000/relayMetaTx', {
         user: userWallet.address,
         interaction,
         nonce,
