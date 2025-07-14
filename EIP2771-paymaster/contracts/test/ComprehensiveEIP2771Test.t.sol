@@ -112,7 +112,7 @@ contract ComprehensiveEIP2771Test is Test {
     
     // ============ EIP2771Forwarder Tests ============
     
-    function testForwarderDeployment() public {
+    function testForwarderDeployment() view public {
         assertEq(forwarder.owner(), owner);
         assertTrue(forwarder.trustedPaymasters(address(paymaster)));
         assertTrue(forwarder.trustedPaymasters(address(ownerPaymaster)));
@@ -219,39 +219,39 @@ contract ComprehensiveEIP2771Test is Test {
         return;
         
         // Setup token payment - user1 needs to have tokens and approve paymaster
-        vm.prank(user1);
-        mockToken.approve(address(paymaster), 100 * 10**18);
+        // vm.prank(user1);
+        // mockToken.approve(address(paymaster), 100 * 10**18);
         
-        vm.prank(user1);
-        paymaster.depositToken(address(mockToken), 100 * 10**18);
+        // vm.prank(user1);
+        // paymaster.depositToken(address(mockToken), 100 * 10**18);
         
-        bytes memory data = abi.encodeWithSelector(SampleERC2771Contract.updateBalance.selector, 400);
+        // bytes memory data = abi.encodeWithSelector(SampleERC2771Contract.updateBalance.selector, 400);
         
-        IEIP2771Forwarder.ForwardRequest memory req = IEIP2771Forwarder.ForwardRequest({
-            from: user1,
-            to: address(sampleContract),
-            value: 0,
-            gas: 100000,
-            nonce: forwarder.getNonce(user1),
-            data: data
-        });
+        // IEIP2771Forwarder.ForwardRequest memory req = IEIP2771Forwarder.ForwardRequest({
+        //     from: user1,
+        //     to: address(sampleContract),
+        //     value: 0,
+        //     gas: 100000,
+        //     nonce: forwarder.getNonce(user1),
+        //     data: data
+        // });
         
-        bytes memory signature = _signRequest(req, USER1_PRIVATE_KEY);
+        // bytes memory signature = _signRequest(req, USER1_PRIVATE_KEY);
         
-        // Check if paymaster can sponsor with token
-        assertTrue(paymaster.tokenBalances(user1, address(mockToken)) > 0);
+        // // Check if paymaster can sponsor with token
+        // assertTrue(paymaster.tokenBalances(user1, address(mockToken)) > 0);
         
-        vm.prank(relayer);
-        (bool success,) = forwarder.executeSponsoredTransactionWithToken(
-            req, 
-            signature, 
-            address(paymaster), 
-            address(mockToken), 
-            10 * 10**18
-        );
+        // vm.prank(relayer);
+        // (bool success,) = forwarder.executeSponsoredTransactionWithToken(
+        //     req, 
+        //     signature, 
+        //     address(paymaster), 
+        //     address(mockToken), 
+        //     10 * 10**18
+        // );
         
-        assertTrue(success);
-        assertEq(sampleContract.getBalance(user1), 400);
+        // assertTrue(success);
+        // assertEq(sampleContract.getBalance(user1), 400);
     }
     
     function testInvalidSignature() public {
@@ -315,7 +315,7 @@ contract ComprehensiveEIP2771Test is Test {
     
     // ============ MetaTransactionPaymaster Tests ============
     
-    function testPaymasterDeployment() public {
+    function testPaymasterDeployment() view public {
         assertEq(paymaster.owner(), owner);
         assertEq(address(paymaster.forwarder()), address(forwarder));
         assertTrue(paymaster.sponsoredContracts(address(sampleContract)));
@@ -452,7 +452,7 @@ contract ComprehensiveEIP2771Test is Test {
     
     // ============ OwnerFundedPaymaster Tests ============
     
-    function testOwnerFundedPaymasterDeployment() public {
+    function testOwnerFundedPaymasterDeployment() view public {
         assertEq(ownerPaymaster.owner(), owner);
         assertEq(address(ownerPaymaster.forwarder()), address(forwarder));
         assertTrue(ownerPaymaster.sponsoredContracts(address(sampleContract)));
@@ -553,7 +553,7 @@ contract ComprehensiveEIP2771Test is Test {
     
     // ============ SampleContract Tests ============
     
-    function testSampleContractDeployment() public {
+    function testSampleContractDeployment() view public {
         assertEq(sampleContract.owner(), owner);
         assertTrue(sampleContract.isTrustedForwarder(address(forwarder)));
     }
@@ -597,13 +597,13 @@ contract ComprehensiveEIP2771Test is Test {
     
     // ============ Library Tests ============
     
-    function testEIP2771Utils() public {
+    function testEIP2771Utils() pure public {
         // Test library functions if they have public/external visibility
         // This would require making some functions public for testing
         assertTrue(true); // Placeholder
     }
     
-    function testPaymasterUtils() public {
+    function testPaymasterUtils() pure public {
         // Test library functions if they have public/external visibility
         // This would require making some functions public for testing
         assertTrue(true); // Placeholder
@@ -611,7 +611,7 @@ contract ComprehensiveEIP2771Test is Test {
     
     // ============ Edge Cases and Security Tests ============
     
-    function testReentrancyProtection() public {
+    function testReentrancyProtection() pure public {
         // Test that contracts are protected against reentrancy attacks
         // This would require a malicious contract to test
         assertTrue(true); // Placeholder
@@ -652,7 +652,7 @@ contract ComprehensiveEIP2771Test is Test {
         forwarder.executeSponsoredTransaction(req, signature, address(paymaster));
     }
     
-    function testSignatureValidation() public {
+    function testSignatureValidation() view public {
         assertTrue(forwarder.verifySignature(
             IEIP2771Forwarder.ForwardRequest({
                 from: user1,
