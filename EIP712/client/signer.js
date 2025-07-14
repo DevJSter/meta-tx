@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import axios from 'axios';
 
 const provider = new ethers.JsonRpcProvider('http://localhost:9650/ext/bc/HekfYrK1fxgzkBSPj5XwBUNfxvZuMS7wLq7p7r6bQQJm6jA2M/rpc');
-const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; // Default for local testing
+const contractAddress = '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6'; // Updated to match relayer
 
 // Create a wallet (user)
 const privateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
@@ -25,46 +25,48 @@ const types = {
 };
 
 async function signAndSend() {
-  const interaction = 'share_post-943216';
+  const interaction = 'share_post-23456';
   
-  // Get the current nonce for the user
-  const contract = new ethers.Contract(
-    contractAddress,
-    ['function nonces(address) view returns (uint256)'],
-    provider
-  );
-  const nonce = Number(await contract.nonces(userWallet.address));
-  
-  console.log(`User: ${userWallet.address}`);
-  console.log(`Current nonce: ${nonce}`);
-  console.log(`Interaction: ${interaction}`);
-
-  const value = {
-    user: userWallet.address,
-    interaction,
-    nonce
-  };
-
-  const signature = await userWallet.signTypedData(domain, types, value);
-
+  // Get the current nonce for the user from the relayer endpoint
   try {
-    const res = await axios.post('http://localhost:8000/relayMetaTx', {
+    const nonceResponse = await axios.get(`http://localhost:3001/nonce/${userWallet.address}`);
+    const nonce = parseInt(nonceResponse.data.nonce);
+    
+    console.log(`User: ${userWallet.address}`);
+    console.log(`Current nonce: ${nonce}`);
+    console.log(`Interaction: ${interaction}`);
+
+    const value = {
       user: userWallet.address,
       interaction,
-      nonce,
-      signature
-    });
-    console.log('Relayed tx hash:', res.data);
-  } catch (error) {
-    if (error.response) {
-      // Server responded with a status other than 2xx
-      console.error('Error:', error.response.data.error || error.response.data);
-      console.error('Significance:', error.response.data.significance);
-      console.error('Status:', error.response.status);
-    } else {
-      // Other errors (network, etc.)
-      console.error('Request failed:', error.message);
+      nonce
+    };
+
+    const signature = await userWallet.signTypedData(domain, types, value);
+
+    try {
+      const res = await axios.post('http://localhost:3001/relayMetaTx', {
+        user: userWallet.address,
+        interaction,
+        nonce,
+        signature
+      });
+      console.log('✅ Transaction successful:', res.data);
+    } catch (error) {
+      if (error.response) {
+        // Server responded with a status other than 2xx
+        console.error('❌ Error:', error.response.data.error || error.response.data);
+        if (error.response.data.significance !== undefined) {
+          console.error('📊 Significance:', error.response.data.significance);
+        }
+        console.error('🔢 Status:', error.response.status);
+      } else {
+        // Other errors (network, etc.)
+        console.error('🌐 Request failed:', error.message);
+      }
     }
+  } catch (nonceError) {
+    console.error('❌ Failed to fetch nonce:', nonceError.message);
   }
 }
 
