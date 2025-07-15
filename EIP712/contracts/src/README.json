@@ -1,4 +1,4 @@
- ```json
+
  const rawData =  { 
  "creatorAddress" : "" , 
  "interactorAddress" : "" , 
@@ -35,6 +35,10 @@ const AIResponse = {
 
 ```json 
 const reWardDistributor = new ethers.createContract("RewardContract") ;
+
+---
+
+will store the 
 
 
 
