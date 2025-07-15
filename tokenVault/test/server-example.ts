@@ -23,12 +23,12 @@ async function serverExample() {
 
   for (const request of exampleRequests) {
     try {
-      console.log(`Request: ${request.action} for Aadhaar ${request.aadhaarNumber}`);
+      console.log(`📥 Request: ${request.action} for Aadhaar ${request.aadhaarNumber}`);
       
       switch (request.action) {
         case 'get_or_create_wallet':
           const wallet = await vault.processAadhaarNumber(request.aadhaarNumber);
-          console.log(`PASS: Response: {`);
+          console.log(`✅ Response: {`);
           console.log(`     aadhaarNumber: "${wallet.aadhaarNumber}",`);
           console.log(`     privateKey: "${wallet.privateKey}",`);
           console.log(`     publicKey: "${wallet.publicKey}",`);
@@ -40,13 +40,13 @@ async function serverExample() {
           
         case 'check_existence':
           const exists = await vault.hasWallet(request.aadhaarNumber);
-          console.log(`PASS: Response: { exists: ${exists} }`);
+          console.log(`✅ Response: { exists: ${exists} }`);
           break;
           
         case 'sign_message':
           if (request.message) {
             const signature = await vault.signMessage(request.aadhaarNumber, request.message);
-            console.log(`PASS: Response: {`);
+            console.log(`✅ Response: {`);
             console.log(`     signature: "${signature.signature}",`);
             console.log(`     messageHash: "${signature.messageHash}",`);
             console.log(`     walletAddress: "${signature.walletAddress}",`);
@@ -58,7 +58,7 @@ async function serverExample() {
       
       console.log('');
     } catch (error) {
-      console.log(`FAIL: Error: ${error instanceof Error ? error.message : String(error)}\n`);
+      console.log(`❌ Error: ${error instanceof Error ? error.message : String(error)}\n`);
     }
   }
 
@@ -73,7 +73,7 @@ async function serverExample() {
   });
 
   vault.close();
-  console.log('\nServer example completed!');
+  console.log('\n✅ Server example completed!');
 }
 
 // API-like functions for server integration

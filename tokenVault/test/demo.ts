@@ -1,4 +1,4 @@
-import { TokenVaultApp } from './index';
+import { TokenVaultApp } from '../src/index';
 
 async function demo() {
   console.log('TokenVault Demo - Aadhaar-based Wallet Management\n');
