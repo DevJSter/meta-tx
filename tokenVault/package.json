@@ -1,0 +1,39 @@
+{
+  "name": "token-vault",
+  "version": "1.0.0",
+  "description": "TypeScript-based Token Vault for Aadhaar-based wallet management",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "test": "ts-node test/runner.ts",
+    "test:unit": "ts-node test/test.ts",
+    "test:server": "ts-node test/server-test.ts",
+    "test:example": "ts-node test/server-example.ts",
+    "demo": "ts-node src/demo.ts",
+    "server": "ts-node src/server.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["ethereum", "wallet", "aadhaar", "typescript", "ethers"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.8.0",
+    "sqlite3": "^5.1.6",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "morgan": "^1.10.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/express": "^4.17.17",
+    "@types/cors": "^2.8.13",
+    "@types/morgan": "^1.9.4",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "nodemon": "^3.0.1"
+  }
+}

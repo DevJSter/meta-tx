@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TokenVault API Test Interface</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #666;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .response.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .response.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        .json-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.offline {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 TokenVault API Test Interface</h1>
+        
+        <div class="section">
+            <h2>Server Status</h2>
+            <div id="server-status" class="status offline">Checking server...</div>
+            <button onclick="checkHealth()">Check Health</button>
+        </div>
+
+        <div class="section">
+            <h2>1. Create/Get Wallet</h2>
+            <div class="input-group">
+                <label for="aadhaar-create">Aadhaar Number (12 digits):</label>
+                <input type="text" id="aadhaar-create" placeholder="123456789012" maxlength="12">
+            </div>
+            <button onclick="createWallet()">Create/Get Wallet</button>
+            <div id="create-response"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. Check Wallet Existence</h2>
+            <div class="input-group">
+                <label for="aadhaar-check">Aadhaar Number:</label>
+                <input type="text" id="aadhaar-check" placeholder="123456789012" maxlength="12">
+            </div>
+            <button onclick="checkWalletExists()">Check Existence</button>
+            <div id="check-response"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. Sign Message</h2>
+            <div class="input-group">
+                <label for="aadhaar-sign">Aadhaar Number:</label>
+                <input type="text" id="aadhaar-sign" placeholder="123456789012" maxlength="12">
+            </div>
+            <div class="input-group">
+                <label for="message-sign">Message to Sign:</label>
+                <textarea id="message-sign" placeholder="Enter message to sign..." rows="3"></textarea>
+            </div>
+            <button onclick="signMessage()">Sign Message</button>
+            <div id="sign-response"></div>
+        </div>
+
+        <div class="section">
+            <h2>4. Verify Signature</h2>
+            <div class="input-group">
+                <label for="wallet-verify">Wallet Address:</label>
+                <input type="text" id="wallet-verify" placeholder="0x...">
+            </div>
+            <div class="input-group">
+                <label for="message-verify">Original Message:</label>
+                <textarea id="message-verify" placeholder="Enter original message..." rows="3"></textarea>
+            </div>
+            <div class="input-group">
+                <label for="signature-verify">Signature:</label>
+                <textarea id="signature-verify" placeholder="0x..." rows="3"></textarea>
+            </div>
+            <button onclick="verifySignature()">Verify Signature</button>
+            <div id="verify-response"></div>
+        </div>
+
+        <div class="section">
+            <h2>5. Get Signature History</h2>
+            <div class="input-group">
+                <label for="aadhaar-history">Aadhaar Number:</label>
+                <input type="text" id="aadhaar-history" placeholder="123456789012" maxlength="12">
+            </div>
+            <button onclick="getSignatureHistory()">Get History</button>
+            <div id="history-response"></div>
+        </div>
+
+        <div class="section">
+            <h2>6. Admin Functions</h2>
+            <button onclick="getAllWallets()">Get All Wallets</button>
+            <div id="admin-response"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        
+        // Check server health on page load
+        window.onload = function() {
+            checkHealth();
+        };
+
+        async function checkHealth() {
+            try {
+                const response = await fetch('http://localhost:3000/health');
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('server-status');
+                if (data.success) {
+                    statusDiv.className = 'status online';
+                    statusDiv.textContent = `✅ Server Online - ${data.message}`;
+                } else {
+                    statusDiv.className = 'status offline';
+                    statusDiv.textContent = '❌ Server Error';
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('server-status');
+                statusDiv.className = 'status offline';
+                statusDiv.textContent = '❌ Server Offline - Cannot connect';
+            }
+        }
+
+        async function createWallet() {
+            const aadhaar = document.getElementById('aadhaar-create').value;
+            const responseDiv = document.getElementById('create-response');
+            
+            if (!validateAadhaar(aadhaar)) {
+                showResponse(responseDiv, 'Invalid Aadhaar number format', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/wallet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ aadhaarNumber: aadhaar })
+                });
+                
+                const data = await response.json();
+                showResponse(responseDiv, data, response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkWalletExists() {
+            const aadhaar = document.getElementById('aadhaar-check').value;
+            const responseDiv = document.getElementById('check-response');
+            
+            if (!validateAadhaar(aadhaar)) {
+                showResponse(responseDiv, 'Invalid Aadhaar number format', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/wallet/exists/${aadhaar}`);
+                const data = await response.json();
+                showResponse(responseDiv, data, response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function signMessage() {
+            const aadhaar = document.getElementById('aadhaar-sign').value;
+            const message = document.getElementById('message-sign').value;
+            const responseDiv = document.getElementById('sign-response');
+            
+            if (!validateAadhaar(aadhaar)) {
+                showResponse(responseDiv, 'Invalid Aadhaar number format', 'error');
+                return;
+            }
+            
+            if (!message.trim()) {
+                showResponse(responseDiv, 'Message cannot be empty', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/wallet/sign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ aadhaarNumber: aadhaar, message: message })
+                });
+                
+                const data = await response.json();
+                showResponse(responseDiv, data, response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function verifySignature() {
+            const wallet = document.getElementById('wallet-verify').value;
+            const message = document.getElementById('message-verify').value;
+            const signature = document.getElementById('signature-verify').value;
+            const responseDiv = document.getElementById('verify-response');
+            
+            if (!wallet.trim() || !message.trim() || !signature.trim()) {
+                showResponse(responseDiv, 'All fields are required', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/wallet/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletAddress: wallet, message: message, signature: signature })
+                });
+                
+                const data = await response.json();
+                showResponse(responseDiv, data, response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getSignatureHistory() {
+            const aadhaar = document.getElementById('aadhaar-history').value;
+            const responseDiv = document.getElementById('history-response');
+            
+            if (!validateAadhaar(aadhaar)) {
+                showResponse(responseDiv, 'Invalid Aadhaar number format', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/wallet/signatures/${aadhaar}`);
+                const data = await response.json();
+                showResponse(responseDiv, data, response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getAllWallets() {
+            const responseDiv = document.getElementById('admin-response');
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/wallets`);
+                const data = await response.json();
+                showResponse(responseDiv, data, response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function validateAadhaar(aadhaar) {
+            return /^\d{12}$/.test(aadhaar);
+        }
+
+        function showResponse(div, data, type) {
+            div.innerHTML = `
+                <div class="response ${type}">
+                    <strong>${type === 'success' ? 'Success' : 'Error'}:</strong>
+                    <div class="json-output">${JSON.stringify(data, null, 2)}</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
