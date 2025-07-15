@@ -111,7 +111,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔐 TokenVault API Test Interface</h1>
+        <h1>TokenVault API Test Interface</h1>
         
         <div class="section">
             <h2>Server Status</h2>
@@ -120,17 +120,39 @@
         </div>
 
         <div class="section">
-            <h2>1. Create/Get Wallet</h2>
+            <h2>1. Create/Get Wallet (Multi-Factor Identity)</h2>
             <div class="input-group">
                 <label for="aadhaar-create">Aadhaar Number (12 digits):</label>
                 <input type="text" id="aadhaar-create" placeholder="123456789012" maxlength="12">
+            </div>
+            <div class="input-group">
+                <label for="email-create">Email:</label>
+                <input type="email" id="email-create" placeholder="user@example.com">
+            </div>
+            <div class="input-group">
+                <label for="phone-create">Phone Number (10 digits):</label>
+                <input type="text" id="phone-create" placeholder="9876543210" maxlength="10">
+            </div>
+            <div class="input-group">
+                <label for="name-create">Full Name:</label>
+                <input type="text" id="name-create" placeholder="John Doe">
             </div>
             <button onclick="createWallet()">Create/Get Wallet</button>
             <div id="create-response"></div>
         </div>
 
         <div class="section">
-            <h2>2. Check Wallet Existence</h2>
+            <h2>2. Create/Get Wallet (Legacy - Aadhaar Only)</h2>
+            <div class="input-group">
+                <label for="aadhaar-legacy">Aadhaar Number (12 digits):</label>
+                <input type="text" id="aadhaar-legacy" placeholder="123456789012" maxlength="12">
+            </div>
+            <button onclick="createWalletLegacy()">Create/Get Wallet (Legacy)</button>
+            <div id="legacy-response"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. Check Wallet Existence</h2>
             <div class="input-group">
                 <label for="aadhaar-check">Aadhaar Number:</label>
                 <input type="text" id="aadhaar-check" placeholder="123456789012" maxlength="12">
@@ -140,7 +162,7 @@
         </div>
 
         <div class="section">
-            <h2>3. Sign Message</h2>
+            <h2>4. Sign Message</h2>
             <div class="input-group">
                 <label for="aadhaar-sign">Aadhaar Number:</label>
                 <input type="text" id="aadhaar-sign" placeholder="123456789012" maxlength="12">
@@ -154,7 +176,7 @@
         </div>
 
         <div class="section">
-            <h2>4. Verify Signature</h2>
+            <h2>5. Verify Signature</h2>
             <div class="input-group">
                 <label for="wallet-verify">Wallet Address:</label>
                 <input type="text" id="wallet-verify" placeholder="0x...">
@@ -172,7 +194,7 @@
         </div>
 
         <div class="section">
-            <h2>5. Get Signature History</h2>
+            <h2>6. Get Signature History</h2>
             <div class="input-group">
                 <label for="aadhaar-history">Aadhaar Number:</label>
                 <input type="text" id="aadhaar-history" placeholder="123456789012" maxlength="12">
@@ -182,7 +204,7 @@
         </div>
 
         <div class="section">
-            <h2>6. Admin Functions</h2>
+            <h2>7. Admin Functions</h2>
             <button onclick="getAllWallets()">Get All Wallets</button>
             <div id="admin-response"></div>
         </div>
@@ -204,21 +226,67 @@
                 const statusDiv = document.getElementById('server-status');
                 if (data.success) {
                     statusDiv.className = 'status online';
-                    statusDiv.textContent = `✅ Server Online - ${data.message}`;
+                    statusDiv.textContent = `ONLINE: Server Online - ${data.message}`;
                 } else {
                     statusDiv.className = 'status offline';
-                    statusDiv.textContent = '❌ Server Error';
+                    statusDiv.textContent = 'ERROR: Server Error';
                 }
             } catch (error) {
                 const statusDiv = document.getElementById('server-status');
                 statusDiv.className = 'status offline';
-                statusDiv.textContent = '❌ Server Offline - Cannot connect';
+                statusDiv.textContent = 'OFFLINE: Server Offline - Cannot connect';
             }
         }
 
         async function createWallet() {
             const aadhaar = document.getElementById('aadhaar-create').value;
+            const email = document.getElementById('email-create').value;
+            const phone = document.getElementById('phone-create').value;
+            const name = document.getElementById('name-create').value;
             const responseDiv = document.getElementById('create-response');
+            
+            if (!validateAadhaar(aadhaar)) {
+                showResponse(responseDiv, 'Invalid Aadhaar number format', 'error');
+                return;
+            }
+            
+            if (!validateEmail(email)) {
+                showResponse(responseDiv, 'Invalid email format', 'error');
+                return;
+            }
+            
+            if (!validatePhone(phone)) {
+                showResponse(responseDiv, 'Invalid phone number format. Must be 10 digits.', 'error');
+                return;
+            }
+            
+            if (!name.trim()) {
+                showResponse(responseDiv, 'Name cannot be empty', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/wallet/identity`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        aadhaarNumber: aadhaar, 
+                        email: email.toLowerCase(), 
+                        phoneNumber: phone, 
+                        name: name.trim() 
+                    })
+                });
+                
+                const data = await response.json();
+                showResponse(responseDiv, data, response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResponse(responseDiv, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function createWalletLegacy() {
+            const aadhaar = document.getElementById('aadhaar-legacy').value;
+            const responseDiv = document.getElementById('legacy-response');
             
             if (!validateAadhaar(aadhaar)) {
                 showResponse(responseDiv, 'Invalid Aadhaar number format', 'error');
@@ -249,7 +317,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/wallet/exists/${aadhaar}`);
+                const response = await fetch(`${API_BASE}/wallet/exists?aadhaar=${aadhaar}`);
                 const data = await response.json();
                 showResponse(responseDiv, data, response.ok ? 'success' : 'error');
             } catch (error) {
@@ -321,7 +389,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/wallet/signatures/${aadhaar}`);
+                const response = await fetch(`${API_BASE}/wallet/signatures?aadhaar=${aadhaar}`);
                 const data = await response.json();
                 showResponse(responseDiv, data, response.ok ? 'success' : 'error');
             } catch (error) {
@@ -343,6 +411,14 @@
 
         function validateAadhaar(aadhaar) {
             return /^\d{12}$/.test(aadhaar);
+        }
+
+        function validateEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function validatePhone(phone) {
+            return /^\d{10}$/.test(phone);
         }
 
         function showResponse(div, data, type) {
