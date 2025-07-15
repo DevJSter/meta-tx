@@ -11,7 +11,7 @@ contract EIPMetaScript is Script {
 
         // Deploy the MetaTxInteraction contract
         MetaTxInteraction metaTx = new MetaTxInteraction();
-        
+
         console.log("MetaTxInteraction deployed to:", address(metaTx));
         console.log("DOMAIN_SEPARATOR:", vm.toString(metaTx.DOMAIN_SEPARATOR()));
 

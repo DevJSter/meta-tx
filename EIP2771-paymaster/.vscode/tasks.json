@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build and Test EIP2771 Paymaster",
+			"type": "shell",
+			"command": "cd contracts && forge build && forge test --match-contract \"MinimalForwarderTest|PaymasterTestFixed\" -v",
+			"group": "build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			]
+		}
+	]
+}

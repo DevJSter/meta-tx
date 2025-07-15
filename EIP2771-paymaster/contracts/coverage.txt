@@ -1,0 +1,297 @@
+Compiling 65 files with Solc 0.8.30
+Solc 0.8.30 finished in 2.54s
+Compiler run successful with warnings:
+Warning (5740): Unreachable code.
+   --> test/ComprehensiveEIP2771Test.t.sol:222:9:
+    |
+222 |         vm.prank(user1);
+    |         ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (5740): Unreachable code.
+   --> test/ComprehensiveEIP2771Test.t.sol:242:9:
+    |
+242 |         assertTrue(paymaster.tokenBalances(user1, address(mockToken)) > 0);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (5740): Unreachable code.
+   --> test/ComprehensiveEIP2771Test.t.sol:244:9:
+    |
+244 |         vm.prank(relayer);
+    |         ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (5740): Unreachable code.
+   --> test/ComprehensiveEIP2771Test.t.sol:254:9:
+    |
+254 |         assertEq(sampleContract.getBalance(user1), 400);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (5740): Unreachable code.
+  --> test/InvariantAndPropertyTest.t.sol:52:9:
+   |
+52 |         owner = makeAddr("owner");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (5740): Unreachable code.
+  --> test/InvariantAndPropertyTest.t.sol:53:9:
+   |
+53 |         user1 = makeAddr("user1");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (5740): Unreachable code.
+  --> test/InvariantAndPropertyTest.t.sol:54:9:
+   |
+54 |         user2 = makeAddr("user2");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (5740): Unreachable code.
+  --> test/InvariantAndPropertyTest.t.sol:55:9:
+   |
+55 |         relayer = makeAddr("relayer");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (5740): Unreachable code.
+  --> test/InvariantAndPropertyTest.t.sol:57:9:
+   |
+57 |         vm.startPrank(owner);
+   |         ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (5740): Unreachable code.
+  --> test/InvariantAndPropertyTest.t.sol:99:9:
+   |
+99 |         targetContract(address(paymaster));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (5740): Unreachable code.
+   --> test/InvariantAndPropertyTest.t.sol:100:9:
+    |
+100 |         targetContract(address(ownerPaymaster));
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (5740): Unreachable code.
+   --> test/InvariantAndPropertyTest.t.sol:101:9:
+    |
+101 |         targetContract(address(sampleContract));
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/ComprehensiveEIP2771Test.t.sol:115:5:
+    |
+115 |     function testForwarderDeployment() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/ComprehensiveEIP2771Test.t.sol:318:5:
+    |
+318 |     function testPaymasterDeployment() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/ComprehensiveEIP2771Test.t.sol:455:5:
+    |
+455 |     function testOwnerFundedPaymasterDeployment() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/ComprehensiveEIP2771Test.t.sol:556:5:
+    |
+556 |     function testSampleContractDeployment() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/ComprehensiveEIP2771Test.t.sol:600:5:
+    |
+600 |     function testEIP2771Utils() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/ComprehensiveEIP2771Test.t.sol:606:5:
+    |
+606 |     function testPaymasterUtils() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/ComprehensiveEIP2771Test.t.sol:614:5:
+    |
+614 |     function testReentrancyProtection() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/ComprehensiveEIP2771Test.t.sol:655:5:
+    |
+655 |     function testSignatureValidation() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Analysing contracts...
+Running tests...
+
+Ran 1 test for test/InvariantAndPropertyTest.t.sol:InvariantTest
+[SKIP: skipped] setUp() (gas: 0)
+Suite result: ok. 0 passed; 0 failed; 1 skipped; finished in 935.54µs (0.00ns CPU time)
+
+Ran 4 tests for test/EIP2771SystemIntegrationTest.t.sol:EIP2771SystemIntegrationTest
+[PASS] testContract() (gas: 2748)
+[PASS] testDirectMetaTransactionExecution() (gas: 98606)
+[PASS] testOwnerFundedPaymaster() (gas: 139408)
+[PASS] testSponsoredTransactionWithPaymaster() (gas: 157807)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 3.03ms (1.55ms CPU time)
+
+Ran 6 tests for test/OwnerFundedPaymasterTest.t.sol:OwnerFundedPaymasterTest
+[PASS] testCannotSponsorWithoutFunds() (gas: 54864)
+[PASS] testEmergencyWithdraw() (gas: 32277)
+[PASS] testOwnerFunding() (gas: 25989)
+[PASS] testOwnerSponsoredTransaction() (gas: 143693)
+[PASS] testToggleOwnerFunding() (gas: 26199)
+[PASS] testUserContributions() (gas: 70744)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 6.72ms (2.46ms CPU time)
+
+Ran 39 tests for test/ComprehensiveEIP2771Test.t.sol:ComprehensiveEIP2771Test
+[PASS] testAccessControlEnforcement() (gas: 25477)
+[PASS] testAddRemoveTrustedPaymaster() (gas: 31839)
+[PASS] testCannotDepositUnwhitelistedToken() (gas: 14668)
+[PASS] testCannotSponsorUnsupportedContract() (gas: 94451)
+[PASS] testCannotSponsorWithoutFunds() (gas: 2275933)
+[PASS] testDepositCredits() (gas: 45524)
+[PASS] testDepositToken() (gas: 85383)
+[PASS] testDirectContractCall() (gas: 38085)
+[PASS] testEIP2771Utils() (gas: 3284)
+[PASS] testEmergencyWithdraw() (gas: 59560)
+[PASS] testExecuteMetaTransaction() (gas: 99088)
+[PASS] testExecuteSponsoredTransaction() (gas: 155749)
+[SKIP] testExecuteSponsoredTransactionWithToken() (gas: 0)
+[PASS] testExecuteWithPaymaster() (gas: 134345)
+[PASS] testFeeCalculation() (gas: 13413)
+[PASS] testForwarderDeployment() (gas: 26327)
+[PASS] testGasLimits() (gas: 90149)
+[PASS] testInvalidSignature() (gas: 42320)
+[PASS] testMetaTransactionViaForwarder() (gas: 96570)
+[PASS] testMultipleUserFlow() (gas: 283160)
+[PASS] testOnlyOwnerCanManagePaymasters() (gas: 20861)
+[PASS] testOwnerDeposit() (gas: 21831)
+[PASS] testOwnerFundedPaymasterDeployment() (gas: 27722)
+[PASS] testPaymasterCanSponsor() (gas: 59845)
+[PASS] testPaymasterDeployment() (gas: 30376)
+[PASS] testPaymasterUtils() (gas: 3305)
+[PASS] testReentrancyProtection() (gas: 3303)
+[PASS] testSampleContractDeployment() (gas: 17596)
+[PASS] testSetMessage() (gas: 41148)
+[PASS] testSignatureValidation() (gas: 34663)
+[PASS] testSponsorTransaction() (gas: 155704)
+[PASS] testSponsorTransactionWithOwnerFunds() (gas: 125957)
+[PASS] testToggleOwnerFunding() (gas: 16402)
+[PASS] testUntrustedPaymaster() (gas: 45034)
+[PASS] testUserContributions() (gas: 56925)
+[PASS] testWithdrawCredits() (gas: 45807)
+[PASS] testWithdrawToken() (gas: 95516)
+[PASS] testWithdrawUserCredits() (gas: 51091)
+[PASS] testWrongNonce() (gas: 40070)
+Suite result: ok. 38 passed; 0 failed; 1 skipped; finished in 10.09ms (12.57ms CPU time)
+
+Ran 22 tests for test/SimplifiedArchitectureTest.t.sol:SimplifiedArchitectureTest
+[PASS] testContractMessageHandling() (gas: 169028)
+[PASS] testCreditDepositAndWithdrawal() (gas: 63083)
+[PASS] testDirectContractCall() (gas: 38086)
+[PASS] testDomainSeparatorConsistency() (gas: 10864)
+[PASS] testExecuteOnlyIfSponsored() (gas: 155605)
+[PASS] testExecuteOnlyIfSponsoredFailsWhenNotSponsored() (gas: 62152)
+[PASS] testForwarderOwnershipManagement() (gas: 37284)
+[PASS] testInsufficientCreditsRejection() (gas: 93120)
+[PASS] testInvalidSignatureRejection() (gas: 80286)
+[PASS] testMultipleUsersCanUseSponsorship() (gas: 283050)
+[PASS] testNonceIncrementsCorrectly() (gas: 155790)
+[PASS] testOwnerCanWithdrawFunds() (gas: 55104)
+[PASS] testOwnerFundsPaymaster() (gas: 43049)
+[PASS] testPaymasterCanSponsorCheck() (gas: 68337)
+[PASS] testPaymasterConfigurationManagement() (gas: 38405)
+[PASS] testReplayAttackPrevention() (gas: 170912)
+[PASS] testSignatureVerification() (gas: 47839)
+[PASS] testSponsoredTransactionWithoutRelayer() (gas: 159813)
+[PASS] testUnsponsoredTransactionStillWorks() (gas: 112583)
+[PASS] testUntrustedPaymasterRejection() (gas: 2897693)
+[PASS] testValueTransferThroughForwarder() (gas: 147166)
+[PASS] testWrongNonceRejection() (gas: 80123)
+Suite result: ok. 22 passed; 0 failed; 0 skipped; finished in 10.38ms (11.86ms CPU time)
+
+Ran 26 tests for test/EdgeCaseSecurityTest.t.sol:EdgeCaseSecurityTest
+[PASS] testConcurrentTransactions() (gas: 283116)
+[PASS] testContractUpgradability() (gas: 45884)
+[PASS] testCrossChainSignatureReuse() (gas: 43683)
+[PASS] testEmptyCalldata() (gas: 67811)
+[PASS] testEventEmission() (gas: 101151)
+[PASS] testFullWorkflowWithMultiplePaymasters() (gas: 215461)
+[PASS] testFuzzGasLimit(uint256) (runs: 257, μ: 94888, ~: 94888)
+[PASS] testFuzzTokenAmount(uint256) (runs: 258, μ: 86175, ~: 86175)
+[PASS] testFuzzValue(uint256) (runs: 258, μ: 108890, ~: 109150)
+[PASS] testGasLimitExploitation() (gas: 54772)
+[PASS] testInvalidTargetContract() (gas: 63950)
+[PASS] testMalformedSignature() (gas: 32613)
+[PASS] testMaxGasLimit() (gas: 57157)
+[PASS] testMaxNonceValue() (gas: 40112)
+[PASS] testOutOfGasHandling() (gas: 118031)
+[PASS] testPaymasterDraining() (gas: 563850)
+[PASS] testReentrancyAttack() (gas: 40040)
+[PASS] testSignatureReplayAttack() (gas: 111263)
+[PASS] testSignatureWithWrongV() (gas: 41119)
+[PASS] testStateConsistency() (gas: 99307)
+[PASS] testTokenApprovalAttack() (gas: 52323)
+[PASS] testUnauthorizedContractManagement() (gas: 21372)
+[PASS] testUnauthorizedEmergencyWithdraw() (gas: 22098)
+[PASS] testUnauthorizedPaymasterManagement() (gas: 20852)
+[PASS] testValueTransferWithoutEth() (gas: 75333)
+[PASS] testZeroGasLimit() (gas: 68609)
+Suite result: ok. 26 passed; 0 failed; 0 skipped; finished in 185.81ms (323.16ms CPU time)
+
+Ran 17 tests for test/InvariantAndPropertyTest.t.sol:PropertyTest
+[PASS] testFuzz_DepositAmount(uint256) (runs: 259, μ: 47460, ~: 47460)
+[PASS] testFuzz_GasLimitBounds(uint256) (runs: 256, μ: 154543, ~: 154543)
+[PASS] testFuzz_NonceHandling(uint256) (runs: 259, μ: 97666, ~: 97666)
+[PASS] testFuzz_TokenDepositAmount(uint256) (runs: 259, μ: 88715, ~: 88715)
+[PASS] testFuzz_ValueTransfer(uint256) (runs: 259, μ: 108870, ~: 109129)
+[PASS] testProperty_CreditsWithdrawalAlwaysWorks() (gas: 47276)
+[PASS] testProperty_EmergencyWithdrawalEmptiesContract() (gas: 24820)
+[PASS] testProperty_FailedTransactionsIncrementNonce() (gas: 70968)
+[PASS] testProperty_GasEstimationConsistent() (gas: 15686)
+[PASS] testProperty_NonceIncrementsCorrectly() (gas: 96754)
+[PASS] testProperty_OnlyOwnerCanManagePaymasters() (gas: 44352)
+[PASS] testProperty_OwnerFundedPaymasterBehavior() (gas: 25268)
+[PASS] testProperty_PaymasterCanSponsorWhenConditionsMet() (gas: 60526)
+[PASS] testProperty_SignatureVerificationDeterministic() (gas: 54389)
+[PASS] testProperty_SponsoredContractsCanBeToggled() (gas: 34663)
+[PASS] testProperty_TokenDepositsIncreaseBalance() (gas: 87902)
+[PASS] testProperty_UserContributionsCanBeToggled() (gas: 62842)
+Suite result: ok. 17 passed; 0 failed; 0 skipped; finished in 262.47ms (532.17ms CPU time)
+
+Ran 7 test suites in 263.03ms (479.42ms CPU time): 113 tests passed, 0 failed, 2 skipped (115 total tests)
+
+╭--------------------------------------+------------------+------------------+----------------+----------------╮
+| File                                 | % Lines          | % Statements     | % Branches     | % Funcs        |
++==============================================================================================================+
+| script/DeployEIP2771System.s.sol     | 0.00% (0/17)     | 0.00% (0/21)     | 100.00% (0/0)  | 0.00% (0/1)    |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| script/DeploySimple.s.sol            | 0.00% (0/19)     | 0.00% (0/22)     | 100.00% (0/0)  | 0.00% (0/1)    |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| script/DeploySimplified.s.sol        | 0.00% (0/35)     | 0.00% (0/40)     | 100.00% (0/0)  | 0.00% (0/1)    |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| src/EIP2771Forwarder.sol             | 80.43% (37/46)   | 81.82% (36/44)   | 53.85% (14/26) | 72.73% (8/11)  |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| src/EIP2771ForwarderTestContract.sol | 50.00% (9/18)    | 47.37% (9/19)    | 50.00% (1/2)   | 60.00% (3/5)   |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| src/MetaTransactionPaymaster.sol     | 55.00% (44/80)   | 48.10% (38/79)   | 26.67% (8/30)  | 57.89% (11/19) |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| src/OwnerFundedPaymaster.sol         | 77.22% (61/79)   | 77.46% (55/71)   | 48.48% (16/33) | 72.22% (13/18) |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| src/SampleContract.sol               | 88.89% (16/18)   | 87.50% (14/16)   | 100.00% (0/0)  | 85.71% (6/7)   |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| src/libraries/EIP2771Utils.sol       | 0.00% (0/11)     | 0.00% (0/11)     | 0.00% (0/3)    | 0.00% (0/4)    |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| src/libraries/PaymasterUtils.sol     | 0.00% (0/13)     | 0.00% (0/16)     | 0.00% (0/1)    | 0.00% (0/4)    |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| test/ComprehensiveEIP2771Test.t.sol  | 50.00% (2/4)     | 50.00% (1/2)     | 100.00% (0/0)  | 50.00% (1/2)   |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| test/EIP2771ForwarderTestHelper.sol  | 50.00% (2/4)     | 50.00% (2/4)     | 100.00% (0/0)  | 50.00% (1/2)   |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| test/EdgeCaseSecurityTest.t.sol      | 42.11% (8/19)    | 46.67% (7/15)    | 100.00% (0/0)  | 42.86% (3/7)   |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| test/InvariantAndPropertyTest.t.sol  | 50.00% (2/4)     | 50.00% (1/2)     | 100.00% (0/0)  | 50.00% (1/2)   |
+|--------------------------------------+------------------+------------------+----------------+----------------|
+| Total                                | 49.32% (181/367) | 45.03% (163/362) | 41.05% (39/95) | 55.95% (47/84) |
+╰--------------------------------------+------------------+------------------+----------------+----------------╯

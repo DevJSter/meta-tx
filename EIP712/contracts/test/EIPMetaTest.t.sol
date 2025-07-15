@@ -23,14 +23,7 @@ contract MetaTxInteractionTest is Test {
             abi.encodePacked(
                 "\x19\x01",
                 metaTx.DOMAIN_SEPARATOR(),
-                keccak256(
-                    abi.encode(
-                        metaTx.META_TX_TYPEHASH(),
-                        user,
-                        keccak256(bytes(interaction)),
-                        nonce
-                    )
-                )
+                keccak256(abi.encode(metaTx.META_TX_TYPEHASH(), user, keccak256(bytes(interaction)), nonce))
             )
         );
 

@@ -1,7 +1,8 @@
 # QONEQT Smart Wallet Implementation
 ## Seamless Web2 to Web3 User Onboarding
 
-![QONEQT Smart Wallet Architecture](../architecture.png)
+<!-- ![QONEQT Smart Wallet Architecture](../architecture.png) -->
+![alt text](image.png)
 
 ## Overview
 

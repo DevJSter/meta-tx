@@ -18,8 +18,8 @@ app.use(express.json());
 // Configuration
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:latest';
-const PORT = process.env.PORT || 3000;
-const SIGNIFICANCE_THRESHOLD = parseFloat(process.env.SIGNIFICANCE_THRESHOLD) || 0.5;
+const PORT = process.env.PORT || 3001;
+const SIGNIFICANCE_THRESHOLD = parseFloat(process.env.SIGNIFICANCE_THRESHOLD) || 0.1;
 
 // Blockchain setup
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
@@ -93,7 +93,10 @@ Only approve interactions that are:
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.status}`);
+      if (response.status === 404) {
+        throw new Error(`Model '${OLLAMA_MODEL}' not found. Please check if the model is available in Ollama.`);
+      }
+      throw new Error(`Ollama API error: ${response.status} - ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -160,6 +163,31 @@ app.post('/validate', async (req, res) => {
   res.json(result);
 });
 
+// Get current nonce for a user
+app.get('/nonce/:address', async (req, res) => {
+  const { address } = req.params;
+  
+  if (!ethers.isAddress(address)) {
+    return res.status(400).json({ error: 'Invalid address format' });
+  }
+
+  try {
+    const nonce = await contract.nonces(address);
+    console.log(`📊 Current nonce for ${address}: ${nonce}`);
+    
+    res.json({ 
+      address: address,
+      nonce: nonce.toString()
+    });
+  } catch (error) {
+    console.error('❌ Error fetching nonce:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch nonce',
+      details: error.message
+    });
+  }
+});
+
 // Main relay endpoint
 app.post('/relayMetaTx', async (req, res) => {
   const { user, interaction, nonce, signature } = req.body;
@@ -174,6 +202,27 @@ app.post('/relayMetaTx', async (req, res) => {
   if (!user || !interaction || nonce === undefined || !signature) {
     return res.status(400).json({ 
       error: 'Missing required parameters: user, interaction, nonce, signature' 
+    });
+  }
+
+  // Check if nonce matches the current contract nonce
+  try {
+    const currentNonce = await contract.nonces(user);
+    console.log(`📊 Contract nonce for ${user}: ${currentNonce}, Provided nonce: ${nonce}`);
+    
+    if (BigInt(nonce) !== currentNonce) {
+      return res.status(400).json({ 
+        error: 'Nonce mismatch',
+        expected: currentNonce.toString(),
+        provided: nonce.toString(),
+        suggestion: 'Please fetch the current nonce from the contract and retry'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error checking nonce:', error);
+    return res.status(500).json({ 
+      error: 'Failed to verify nonce',
+      details: error.message
     });
   }
 
@@ -244,6 +293,61 @@ app.post('/relayMetaTx', async (req, res) => {
   }
 });
 
+// Troubleshooting endpoint to check Ollama status
+app.get('/ollama-status', async (req, res) => {
+  try {
+    // Check if Ollama is running
+    const healthResponse = await fetch(`${OLLAMA_URL}/api/tags`);
+    
+    if (!healthResponse.ok) {
+      return res.status(500).json({
+        status: 'error',
+        message: 'Ollama API is not accessible',
+        ollamaUrl: OLLAMA_URL,
+        suggestions: [
+          'Make sure Ollama is installed and running',
+          'Check if the OLLAMA_URL is correct',
+          'Try: ollama serve'
+        ]
+      });
+    }
+
+    const modelsData = await healthResponse.json();
+    const availableModels = modelsData.models?.map(m => m.name) || [];
+    
+    // Check if the configured model is available
+    const modelAvailable = availableModels.some(model => 
+      model.includes(OLLAMA_MODEL) || OLLAMA_MODEL.includes(model.split(':')[0])
+    );
+
+    res.json({
+      status: 'ok',
+      ollamaUrl: OLLAMA_URL,
+      configuredModel: OLLAMA_MODEL,
+      modelAvailable: modelAvailable,
+      availableModels: availableModels,
+      suggestions: !modelAvailable ? [
+        `Model '${OLLAMA_MODEL}' not found`,
+        'Available models: ' + availableModels.join(', '),
+        'Try: ollama pull ' + OLLAMA_MODEL,
+        'Or update OLLAMA_MODEL environment variable to an available model'
+      ] : ['All good! AI validation should work.']
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to check Ollama status',
+      error: error.message,
+      ollamaUrl: OLLAMA_URL,
+      suggestions: [
+        'Make sure Ollama is installed and running',
+        'Check if the OLLAMA_URL is correct',
+        'Try: ollama serve'
+      ]
+    });
+  }
+});
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('❌ Unhandled error:', error);
@@ -259,6 +363,8 @@ app.listen(PORT, () => {
   console.log(`📝 Health check: http://localhost:${PORT}/health`);
   console.log(`🧪 Test validation: POST http://localhost:${PORT}/validate`);
   console.log(`🚀 Relay endpoint: POST http://localhost:${PORT}/relayMetaTx`);
+  console.log(`📊 Get nonce: GET http://localhost:${PORT}/nonce/:address`);
+  console.log(`🔧 Ollama status: GET http://localhost:${PORT}/ollama-status`);
   console.log('');
 });
 
