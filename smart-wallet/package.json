@@ -1,0 +1,16 @@
+{
+  "name": "smart-wallet",
+  "version": "1.0.0",
+  "description": "![QONEQT Smart Wallet Architecture](../architecture.png)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.0",
+    "ethers": "^6.15.0"
+  }
+}
