@@ -51,4 +51,6 @@ contract MetaTxInteraction {
 
         emit InteractionPerformed(user, interaction);
     }
+
+    
 }

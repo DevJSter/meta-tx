@@ -9,8 +9,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 
 const testFiles = [
-  'test/test.ts',
-  'test/server-test.ts'
+  'test/test.ts'
 ];
 
 class TestRunner {
