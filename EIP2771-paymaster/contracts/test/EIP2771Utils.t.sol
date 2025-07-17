@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "forge-std/Test.sol";                      // Forge’s testing framework
-import "../src/libraries/EIP2771Utils.sol";       // The library under test
+import "forge-std/Test.sol"; // Forge’s testing framework
+import "../src/libraries/EIP2771Utils.sol"; // The library under test
 
 contract EIP2771UtilsTest is Test {
     // ─── Wrappers ────────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ contract EIP2771UtilsTest is Test {
         address expected = address(0x0000000000000000000000000000000000000022);
 
         // Build some arbitrary payload and append our expected address
-        bytes memory payload  = abi.encodePacked("foo", uint8(1));
+        bytes memory payload = abi.encodePacked("foo", uint8(1));
         bytes memory appended = abi.encodePacked(payload, expected);
 
         // Call our external wrapper. memory → calldata conversion occurs here.
@@ -50,7 +50,7 @@ contract EIP2771UtilsTest is Test {
         address dummy = address(0x0000000000000000000000000000000000000011);
 
         // Build payload + dummy at the end
-        bytes memory payload  = abi.encodePacked("payload", uint16(2));
+        bytes memory payload = abi.encodePacked("payload", uint16(2));
         bytes memory appended = abi.encodePacked(payload, dummy);
 
         // Call wrapper and verify we got exactly the original payload back

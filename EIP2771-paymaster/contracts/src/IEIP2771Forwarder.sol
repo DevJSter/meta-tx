@@ -11,12 +11,12 @@ interface IEIP2771Forwarder {
      * @dev Structure representing a forward request for meta-transactions
      */
     struct ForwardRequest {
-        address from;       // Original transaction sender
-        address to;         // Target contract address
-        uint256 value;      // ETH value to send
-        uint256 gas;        // Gas limit for execution
-        uint256 nonce;      // Sender's current nonce
-        bytes data;         // Encoded function call data
+        address from; // Original transaction sender
+        address to; // Target contract address
+        uint256 value; // ETH value to send
+        uint256 gas; // Gas limit for execution
+        uint256 nonce; // Sender's current nonce
+        bytes data; // Encoded function call data
     }
 
     /**
@@ -59,9 +59,9 @@ interface IEIP2771Forwarder {
      * @return success Whether the execution succeeded
      * @return returnData Return data from the executed call
      */
-    function executeMetaTransaction(ForwardRequest calldata request, bytes calldata signature) 
-        external 
-        payable 
+    function executeMetaTransaction(ForwardRequest calldata request, bytes calldata signature)
+        external
+        payable
         returns (bool success, bytes memory returnData);
 
     /**
@@ -72,11 +72,9 @@ interface IEIP2771Forwarder {
      * @return success Whether the execution succeeded
      * @return returnData Return data from the executed call
      */
-    function executeSponsoredTransaction(
-        ForwardRequest calldata request, 
-        bytes calldata signature, 
-        address paymaster
-    ) external returns (bool success, bytes memory returnData);
+    function executeSponsoredTransaction(ForwardRequest calldata request, bytes calldata signature, address paymaster)
+        external
+        returns (bool success, bytes memory returnData);
 
     /**
      * @dev Check if this forwarder is trusted by target contracts

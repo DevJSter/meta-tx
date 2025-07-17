@@ -15,9 +15,8 @@ import "./interfaces/IEIP2771Forwarder.sol";
 contract EIP2771Forwarder is IEIP2771Forwarder, EIP712, Ownable, ReentrancyGuard {
     using ECDSA for bytes32;
 
-    bytes32 private constant _TYPEHASH = keccak256(
-        "ForwardRequest(address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data)"
-    );
+    bytes32 private constant _TYPEHASH =
+        keccak256("ForwardRequest(address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data)");
 
     mapping(address => uint256) private _nonces;
     mapping(address => bool) public trustedPaymasters;
@@ -60,17 +59,7 @@ contract EIP2771Forwarder is IEIP2771Forwarder, EIP712, Ownable, ReentrancyGuard
      */
     function verifySignature(ForwardRequest calldata req, bytes calldata signature) public view returns (bool) {
         address signer = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    _TYPEHASH,
-                    req.from,
-                    req.to,
-                    req.value,
-                    req.gas,
-                    req.nonce,
-                    keccak256(req.data)
-                )
-            )
+            keccak256(abi.encode(_TYPEHASH, req.from, req.to, req.value, req.gas, req.nonce, keccak256(req.data)))
         ).recover(signature);
 
         return _nonces[req.from] == req.nonce && signer == req.from;
@@ -86,19 +75,17 @@ contract EIP2771Forwarder is IEIP2771Forwarder, EIP712, Ownable, ReentrancyGuard
     /**
      * @dev Execute a forward request (can be called by anyone)
      */
-    function executeMetaTransaction(ForwardRequest calldata req, bytes calldata signature) 
-        public 
-        payable 
-        nonReentrant 
-        returns (bool success, bytes memory returndata) 
+    function executeMetaTransaction(ForwardRequest calldata req, bytes calldata signature)
+        public
+        payable
+        nonReentrant
+        returns (bool success, bytes memory returndata)
     {
         require(verifySignature(req, signature), "EIP2771Forwarder: signature does not match request");
-        
+
         _nonces[req.from] = req.nonce + 1;
 
-        (success, returndata) = req.to.call{gas: req.gas, value: req.value}(
-            abi.encodePacked(req.data, req.from)
-        );
+        (success, returndata) = req.to.call{gas: req.gas, value: req.value}(abi.encodePacked(req.data, req.from));
 
         // Validate that the transaction used less gas than the one provided
         require(gasleft() > req.gas / 63, "EIP2771Forwarder: insufficient gas");
@@ -109,20 +96,18 @@ contract EIP2771Forwarder is IEIP2771Forwarder, EIP712, Ownable, ReentrancyGuard
     /**
      * @dev Execute a forward request via paymaster (only trusted paymasters can call)
      */
-    function executeWithPaymaster(ForwardRequest calldata req, bytes calldata signature) 
-        public 
-        payable 
+    function executeWithPaymaster(ForwardRequest calldata req, bytes calldata signature)
+        public
+        payable
         onlyTrustedPaymaster
-        nonReentrant 
-        returns (bool success, bytes memory returndata) 
+        nonReentrant
+        returns (bool success, bytes memory returndata)
     {
         require(verifySignature(req, signature), "EIP2771Forwarder: signature does not match request");
-        
+
         _nonces[req.from] = req.nonce + 1;
 
-        (success, returndata) = req.to.call{gas: req.gas, value: req.value}(
-            abi.encodePacked(req.data, req.from)
-        );
+        (success, returndata) = req.to.call{gas: req.gas, value: req.value}(abi.encodePacked(req.data, req.from));
 
         // Validate that the transaction used less gas than the one provided
         require(gasleft() > req.gas / 63, "EIP2771Forwarder: insufficient gas");
@@ -134,38 +119,45 @@ contract EIP2771Forwarder is IEIP2771Forwarder, EIP712, Ownable, ReentrancyGuard
      * @dev Execute a forward request via paymaster (can be called by anyone)
      * This function verifies signature, executes transaction, then asks paymaster to pay
      */
-    function executeSponsoredTransaction(ForwardRequest calldata req, bytes calldata signature, address paymaster) 
-        public 
-        nonReentrant 
-        returns (bool success, bytes memory returndata) 
+    function executeSponsoredTransaction(ForwardRequest calldata req, bytes calldata signature, address paymaster)
+        public
+        nonReentrant
+        returns (bool success, bytes memory returndata)
     {
         require(verifySignature(req, signature), "EIP2771Forwarder: signature does not match request");
         require(trustedPaymasters[paymaster], "EIP2771Forwarder: paymaster not trusted");
-        
+
         // Check with paymaster if they can sponsor this transaction
         (bool callSuccess, bytes memory result) = paymaster.call(
             abi.encodeWithSignature("canSponsorTransaction(address,address,uint256)", req.from, req.to, req.gas)
         );
-        
-        require(callSuccess && result.length > 0 && abi.decode(result, (bool)), "EIP2771Forwarder: transaction cannot be sponsored");
-        
+
+        require(
+            callSuccess && result.length > 0 && abi.decode(result, (bool)),
+            "EIP2771Forwarder: transaction cannot be sponsored"
+        );
+
         // Execute the transaction
         _nonces[req.from] = req.nonce + 1;
-        
+
         uint256 gasStart = gasleft();
-        (success, returndata) = req.to.call{gas: req.gas, value: req.value}(
-            abi.encodePacked(req.data, req.from)
-        );
-        
+        (success, returndata) = req.to.call{gas: req.gas, value: req.value}(abi.encodePacked(req.data, req.from));
+
         // Validate that the transaction used less gas than the one provided
         require(gasleft() > req.gas / 63, "EIP2771Forwarder: insufficient gas");
-        
+
         // Ask paymaster to pay for the transaction
         (bool paymentSuccess,) = paymaster.call(
-            abi.encodeWithSignature("processPayment(address,address,uint256,uint256)", req.from, req.to, gasStart - gasleft() + 21000, tx.gasprice)
+            abi.encodeWithSignature(
+                "processPayment(address,address,uint256,uint256)",
+                req.from,
+                req.to,
+                gasStart - gasleft() + 21000,
+                tx.gasprice
+            )
         );
         require(paymentSuccess, "EIP2771Forwarder: payment processing failed");
-        
+
         emit MetaTransactionExecuted(req.from, req.to, req.value, req.gas, req.nonce, req.data, success);
     }
 
@@ -173,30 +165,26 @@ contract EIP2771Forwarder is IEIP2771Forwarder, EIP712, Ownable, ReentrancyGuard
      * @dev Execute a forward request via paymaster with token payment (can be called by anyone)
      */
     function executeSponsoredTransactionWithToken(
-        ForwardRequest calldata req, 
-        bytes calldata signature, 
-        address paymaster, 
-        address paymentToken, 
+        ForwardRequest calldata req,
+        bytes calldata signature,
+        address paymaster,
+        address paymentToken,
         uint256 paymentAmount
-    ) 
-        public 
-        nonReentrant 
-        returns (bool success, bytes memory returndata) 
-    {
+    ) public nonReentrant returns (bool success, bytes memory returndata) {
         require(verifySignature(req, signature), "EIP2771Forwarder: signature does not match request");
         require(trustedPaymasters[paymaster], "EIP2771Forwarder: paymaster not trusted");
-        
+
         // Call the paymaster to sponsor the transaction with token payment
         (success, returndata) = paymaster.call(
             abi.encodeWithSignature(
-                "sponsorTransactionWithToken((address,address,uint256,uint256,uint256,bytes),bytes,address,uint256)", 
-                req, 
+                "sponsorTransactionWithToken((address,address,uint256,uint256,uint256,bytes),bytes,address,uint256)",
+                req,
                 signature,
                 paymentToken,
                 paymentAmount
             )
         );
-        
+
         require(success, "EIP2771Forwarder: paymaster call failed");
     }
 
