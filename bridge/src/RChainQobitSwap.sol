@@ -36,7 +36,7 @@ contract RChainQobitSwap {
     function swapQobitsForQToken(address user, uint256 qobitsAmount) external {
         require(qobitsBalance[user] >= qobitsAmount, "Insufficient Qobits");
 
-        ERC20(qobitToken).transfer(user, qobitsAmount); // Transfer from contract to user
+        require(ERC20(qobitToken).transfer(user, qobitsAmount), "Transfer failed"); // Transfer from contract to user
 
         qobitsBalance[user] -= qobitsAmount;
 
