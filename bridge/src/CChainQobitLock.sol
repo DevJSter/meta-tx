@@ -25,7 +25,7 @@ contract CChainQobitLock {
 
     function lockQobits(address user, uint256 amount) internal {
         lockedQobits[user] += amount;
-        qobitsLockTimestamp[user] = block.timestamp; // Lock for 24 hours
+        userLocks[user].push(LockRecord(amount, block.timestamp));
         emit QobitsLocked(user, amount);
     }
 
