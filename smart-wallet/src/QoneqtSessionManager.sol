@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 contract QoneqtSessionManager{
-    struct sessionKey {
+    struct SessionKey {
         address sessionKey;
         uint64 expiry; // time when session key expires
         bool revoked;
@@ -20,7 +20,7 @@ contract QoneqtSessionManager{
 
         // todo: to add access control here ( wallet owner / factory )
         sessions[wallet][sessionKey] = SessionKey(sessionKey, expiry, false);
-        emit SessionKey(wallet, sessionKey, expiry);
+        emit SessionKeyAdded(wallet, sessionKey, expiry);
     }
 
     //Revoke a sessionkey
@@ -35,7 +35,7 @@ contract QoneqtSessionManager{
     //check sessionkey validity (expiry and revoked only) 
     function isSessionKeyValid(address wallet, address sessionKey, bytes calldata /*data*/) external view returns (bool) {
         SessionKey memory sk = sessions[wallet][sessionKey];
-        if(sk.revoked) returns false;
+        if(sk.revoked) return false;
         if (block.timestamp > sk.expiry) return false;
         return true;
     }
