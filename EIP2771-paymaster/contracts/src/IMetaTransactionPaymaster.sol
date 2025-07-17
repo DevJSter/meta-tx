@@ -36,11 +36,10 @@ interface IMetaTransactionPaymaster {
      * @param gasLimit The gas limit for the transaction
      * @return canSponsor True if the transaction can be sponsored
      */
-    function canSponsorTransaction(
-        address user, 
-        address targetContract, 
-        uint256 gasLimit
-    ) external view returns (bool canSponsor);
+    function canSponsorTransaction(address user, address targetContract, uint256 gasLimit)
+        external
+        view
+        returns (bool canSponsor);
 
     /**
      * @dev Process payment for a sponsored transaction (called by forwarder)
@@ -49,12 +48,7 @@ interface IMetaTransactionPaymaster {
      * @param gasUsed The amount of gas used
      * @param gasPrice The gas price for the transaction
      */
-    function processPayment(
-        address user,
-        address targetContract,
-        uint256 gasUsed,
-        uint256 gasPrice
-    ) external;
+    function processPayment(address user, address targetContract, uint256 gasUsed, uint256 gasPrice) external;
 
     /**
      * @dev Get estimated fee for sponsoring a transaction

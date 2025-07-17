@@ -16,7 +16,7 @@ library EIP2771Utils {
             }
         }
     }
-    
+
     /**
      * @dev Extract the original data from meta-transaction data
      */
@@ -27,19 +27,18 @@ library EIP2771Utils {
             originalData = data;
         }
     }
-    
+
     /**
      * @dev Calculate the gas cost for a transaction
      */
-    function calculateGasCost(
-        uint256 gasUsed,
-        uint256 gasPrice,
-        uint256 baseFee,
-        uint256 multiplier
-    ) internal pure returns (uint256) {
+    function calculateGasCost(uint256 gasUsed, uint256 gasPrice, uint256 baseFee, uint256 multiplier)
+        internal
+        pure
+        returns (uint256)
+    {
         return ((gasUsed + baseFee) * gasPrice * multiplier) / 100;
     }
-    
+
     /**
      * @dev Validate gas limit is within acceptable bounds
      */
