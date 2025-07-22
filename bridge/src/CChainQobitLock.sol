@@ -15,6 +15,13 @@ contract CChainQobitLock {
     mapping(address => uint256) public lockedQobits;
     mapping(address => uint256) public qobitsLockTimestamp;
 
+    struct LockRecord {
+        uint256 amount;
+        uint256 timestamp;
+    }
+
+    mapping(address => LockRecord[]) public userLocks;
+
     event QobitsLocked(address indexed user, uint256 amount);
     event QobitsBridged(address indexed user, uint256 amount);
 
@@ -40,7 +47,6 @@ contract CChainQobitLock {
     function bridgeQobitsToRChain(address user, uint256 amount) external {
         require(lockedQobits[user] >= amount, "Insufficient locked Qobits");
         require(block.timestamp >= qobitsLockTimestamp[user] + 24 hours, "Qobits are still locked");
-
         IRChainBridge(rChainBridge).mintQobitsOnRChain(user, amount);
 
         lockedQobits[user] -= amount;
