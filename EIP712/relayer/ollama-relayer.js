@@ -24,6 +24,7 @@ const MAX_SIGNIFICANCE = 10.0;
 const MIN_SIGNIFICANCE = 0.1;
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10; // Max requests per minute per user
+const REJECT_LOW_CONFIDENCE = process.env.REJECT_LOW_CONFIDENCE !== 'false'; // Default: true
 
 // Enhanced blockchain setup
 console.log('🔗 Connecting to blockchain...');
@@ -57,6 +58,7 @@ console.log(`🌐 Network: ${process.env.RPC_URL}`);
 console.log(`🤖 AI Model: ${OLLAMA_MODEL}`);
 console.log(`📊 Significance Threshold: ${SIGNIFICANCE_THRESHOLD}`);
 console.log(`⚡ Rate Limit: ${RATE_LIMIT_MAX_REQUESTS} req/min per user`);
+console.log(`🎯 Reject Low Confidence: ${REJECT_LOW_CONFIDENCE}`);
 console.log(`🔗 Port: ${PORT}`);
 console.log('');
 
@@ -305,7 +307,7 @@ function enhancedFallbackValidation(interaction, userAddress) {
     significance: Math.round(MIN_SIGNIFICANCE * 100),
     originalSignificance: MIN_SIGNIFICANCE,
     category: 'unknown',
-    reason: 'Fallback: Unrecognized interaction pattern',
+    reason: 'Fallback: Unrecognized interaction pattern - please provide more descriptive interaction',
     confidence: 'low',
     fallback: true
   };
@@ -465,6 +467,19 @@ app.post('/relayMetaTx', async (req, res) => {
       category: validationResult.category,
       significance: validationResult.originalSignificance,
       confidence: validationResult.confidence
+    });
+  }
+
+  // Check confidence level - reject low confidence transactions
+  if (REJECT_LOW_CONFIDENCE && validationResult.confidence === 'low') {
+    console.log('❌ Interaction rejected due to low AI confidence');
+    return res.status(400).json({ 
+      error: 'Interaction rejected due to low AI confidence',
+      reason: validationResult.reason,
+      category: validationResult.category,
+      significance: validationResult.originalSignificance,
+      confidence: validationResult.confidence,
+      suggestion: 'Please provide a clearer or more detailed interaction description'
     });
   }
 
