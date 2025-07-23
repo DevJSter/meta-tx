@@ -13,16 +13,19 @@ contract ReentrancyAttacker {
         user = _user;
     }
 
-    function attack(string calldata interaction, uint256 nonce, bytes calldata signature) external {
-        // First call to executeMetaTx
-        target.executeMetaTx(user, interaction, nonce, signature);
+    function attack(string calldata interaction, uint256 nonce, uint256 significance, bytes calldata signature)
+        external
+    {
+        // First call to executeMetaTx with significance parameter
+        target.executeMetaTx(user, interaction, nonce, significance, signature);
     }
 
     fallback() external {
-        // Try to reenter - this should fail or be impossible as no external calls exist
+        // Try to reenter - this should fail due to reentrancy guard
         uint256 currentNonce = target.nonces(user);
         bytes memory dummySig = hex"00";
-        try target.executeMetaTx(user, "reenter_attempt", currentNonce, dummySig) {
+        uint256 dummySignificance = 100; // 1.0 significance
+        try target.executeMetaTx(user, "reenter_attempt", currentNonce, dummySignificance, dummySig) {
             revert("Reentrancy succeeded unexpectedly");
         } catch {}
     }
