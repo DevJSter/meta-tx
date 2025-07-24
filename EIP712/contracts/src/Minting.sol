@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
@@ -64,17 +65,19 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
     }
 
     constructor() ERC20("Qobit Token", "QBIT") Ownable(msg.sender) {
-        contractDeploymentDay = getCurrentDay();
+        // Fix: Initialize contractDeploymentDay with current timestamp
+        contractDeploymentDay = block.timestamp / SECONDS_PER_DAY;
 
         // Mint initial supply to owner for liquidity/partnerships
         _mint(msg.sender, 1000000e18); // 1M tokens
     }
 
     function getCurrentDay() public view returns (uint256) {
-        return (block.timestamp - (contractDeploymentDay * SECONDS_PER_DAY)) / SECONDS_PER_DAY + contractDeploymentDay;
+        return block.timestamp / SECONDS_PER_DAY;
     }
 
     function setMetaTxContract(address _metaTxContract) external onlyOwner {
+        require(_metaTxContract != address(0), "Invalid contract address");
         address oldContract = metaTxContract;
         metaTxContract = _metaTxContract;
         authorizedContracts[_metaTxContract] = true;
@@ -82,6 +85,7 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
     }
 
     function setAuthorizedContract(address _contract, bool _authorized) external onlyOwner {
+        require(_contract != address(0), "Invalid contract address");
         authorizedContracts[_contract] = _authorized;
     }
 
@@ -92,6 +96,9 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
         require(_baseRewardPerPoint > 0, "Invalid base reward");
         require(_maxDailyMint > 0, "Invalid max daily mint");
         require(_minPointsThreshold > 0, "Invalid min threshold");
+        require(_baseRewardPerPoint <= 1e18, "Base reward too high"); // Max 1 token per point
+        require(_maxDailyMint <= 10000e18, "Max daily mint too high"); // Max 10K tokens per day
+        require(_minPointsThreshold <= 10000, "Min threshold too high"); // Max 100 points threshold
 
         baseRewardPerPoint = _baseRewardPerPoint;
         maxDailyMint = _maxDailyMint;
@@ -109,9 +116,14 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
     {
         require(user != address(0), "Invalid user");
         require(significance > 0, "Invalid significance");
+        require(significance <= 1000 * POINTS_DECIMALS, "Significance too high"); // Max 1000 points per interaction
 
         uint256 currentDay = getCurrentDay();
         UserRewards storage rewards = userRewards[user];
+
+        // Check for daily points overflow
+        require(rewards.dailyPoints + significance >= rewards.dailyPoints, "Daily points overflow");
+        require(rewards.totalPoints + significance >= rewards.totalPoints, "Total points overflow");
 
         // Add points to daily and total counters
         rewards.dailyPoints += significance;
@@ -136,11 +148,13 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
         require(!rewards.dayMinted[currentDay], "Already minted today");
         require(rewards.dailyPoints >= minPointsThreshold, "Insufficient daily points");
 
+        // Calculate streak BEFORE updating lastMintDay
+        uint256 streakBonus = _calculateStreakBonus(user, currentDay);
+        
         // Calculate base reward
         uint256 baseReward = (rewards.dailyPoints * baseRewardPerPoint) / POINTS_DECIMALS;
-
+        
         // Apply streak bonus
-        uint256 streakBonus = _calculateStreakBonus(user, currentDay);
         uint256 totalReward = (baseReward * streakBonus) / 100;
 
         // Cap at max daily mint
@@ -148,18 +162,29 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
             totalReward = maxDailyMint;
         }
 
+        // Ensure we don't mint zero tokens
+        require(totalReward > 0, "No tokens to mint");
+
+        // Update streak logic - check if consecutive minting
+        if (rewards.lastMintDay == 0) {
+            // First time minting
+            rewards.streakDays = 1;
+        } else if (currentDay == rewards.lastMintDay + 1) {
+            // Consecutive day minting
+            rewards.streakDays++;
+            if (rewards.streakDays > 5) {
+                rewards.streakDays = 5; // Cap at 5 days for max bonus
+            }
+        } else {
+            // Non-consecutive - reset streak
+            rewards.streakDays = 1;
+        }
+
         // Update user state
         rewards.dayMinted[currentDay] = true;
         rewards.lastMintDay = currentDay;
         rewards.totalMinted += totalReward;
         rewards.dailyPoints = 0; // Reset daily points after minting
-
-        // Update streak
-        if (currentDay == rewards.lastMintDay + 1 || rewards.lastMintDay == 0) {
-            rewards.streakDays++;
-        } else {
-            rewards.streakDays = 1; // Reset streak
-        }
 
         // Mint tokens (users pay their own gas)
         _mint(user, totalReward);
@@ -170,25 +195,26 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
     function _calculateStreakBonus(address user, uint256 currentDay) internal view returns (uint256) {
         UserRewards storage rewards = userRewards[user];
 
-        // Check for consecutive days
-        uint256 consecutiveDays = 0;
-        for (uint256 i = 1; i <= 7 && currentDay >= i; i++) {
-            // Check last 7 days
-            uint256 checkDay = currentDay - i;
-            if (rewards.dayMinted[checkDay]) {
-                consecutiveDays++;
-            } else {
-                break;
+        // If this is the first mint or no previous mint day recorded
+        if (rewards.lastMintDay == 0) {
+            return 100; // Base 100% (no bonus)
+        }
+
+        // Check if user minted yesterday for streak continuation
+        if (currentDay == rewards.lastMintDay + 1) {
+            // User has consecutive streak, use current streak count
+            uint256 bonusPercentage = (rewards.streakDays * (STREAK_BONUS_MULTIPLIER - 100)) / 100;
+            uint256 maxBonus = MAX_STREAK_BONUS - 100; // Convert to bonus percentage
+            
+            if (bonusPercentage > maxBonus) {
+                bonusPercentage = maxBonus;
             }
+            
+            return 100 + bonusPercentage; // Base 100% + bonus
         }
-
-        // Calculate bonus: 10% per consecutive day, max 50%
-        uint256 bonusPercentage = consecutiveDays * 10;
-        if (bonusPercentage > 50) {
-            bonusPercentage = 50;
-        }
-
-        return 100 + bonusPercentage; // Base 100% + bonus
+        
+        // Non-consecutive minting, no streak bonus
+        return 100;
     }
 
     function _updateLeaderboard(address user, uint256 newScore) internal {
@@ -293,5 +319,36 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
     function hasUserMintedToday(address user) external view returns (bool) {
         uint256 currentDay = getCurrentDay();
         return userRewards[user].dayMinted[currentDay];
+    }
+
+    // Emergency functions
+    function emergencyPause() external onlyOwner {
+        // Could implement pause functionality here
+        // For now, we can disable authorized contracts
+        metaTxContract = address(0);
+    }
+
+    function emergencyRecoverTokens(address token, uint256 amount) external onlyOwner {
+        require(token != address(this), "Cannot recover own tokens");
+        IERC20(token).transfer(owner(), amount);
+    }
+
+    // Additional view functions for better transparency
+    function getContractStats() external view returns (
+        uint256 totalSupply_,
+        uint256 totalUsers,
+        uint256 currentDay_,
+        uint256 deploymentDay
+    ) {
+        // Count users with points (approximation)
+        uint256 userCount = 0;
+        // Note: This is gas-intensive, consider using events for accurate counts
+        
+        return (
+            totalSupply(),
+            userCount,
+            getCurrentDay(),
+            contractDeploymentDay
+        );
     }
 }
