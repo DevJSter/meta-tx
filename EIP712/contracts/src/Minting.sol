@@ -150,10 +150,10 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
 
         // Calculate streak BEFORE updating lastMintDay
         uint256 streakBonus = _calculateStreakBonus(user, currentDay);
-        
+
         // Calculate base reward
         uint256 baseReward = (rewards.dailyPoints * baseRewardPerPoint) / POINTS_DECIMALS;
-        
+
         // Apply streak bonus
         uint256 totalReward = (baseReward * streakBonus) / 100;
 
@@ -202,17 +202,18 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
 
         // Check if user minted yesterday for streak continuation
         if (currentDay == rewards.lastMintDay + 1) {
-            // User has consecutive streak, use current streak count
-            uint256 bonusPercentage = (rewards.streakDays * (STREAK_BONUS_MULTIPLIER - 100)) / 100;
-            uint256 maxBonus = MAX_STREAK_BONUS - 100; // Convert to bonus percentage
-            
+            // User has consecutive streak, apply bonus based on current streak
+            // For streak day 1: 10% bonus (110%), day 2: 20% bonus (120%), etc.
+            uint256 bonusPercentage = rewards.streakDays * 10; // 10% per streak day
+            uint256 maxBonus = 50; // 50% max bonus
+
             if (bonusPercentage > maxBonus) {
                 bonusPercentage = maxBonus;
             }
-            
+
             return 100 + bonusPercentage; // Base 100% + bonus
         }
-        
+
         // Non-consecutive minting, no streak bonus
         return 100;
     }
@@ -326,29 +327,5 @@ contract QobitToken is ERC20, Ownable, ReentrancyGuard {
         // Could implement pause functionality here
         // For now, we can disable authorized contracts
         metaTxContract = address(0);
-    }
-
-    function emergencyRecoverTokens(address token, uint256 amount) external onlyOwner {
-        require(token != address(this), "Cannot recover own tokens");
-        IERC20(token).transfer(owner(), amount);
-    }
-
-    // Additional view functions for better transparency
-    function getContractStats() external view returns (
-        uint256 totalSupply_,
-        uint256 totalUsers,
-        uint256 currentDay_,
-        uint256 deploymentDay
-    ) {
-        // Count users with points (approximation)
-        uint256 userCount = 0;
-        // Note: This is gas-intensive, consider using events for accurate counts
-        
-        return (
-            totalSupply(),
-            userCount,
-            getCurrentDay(),
-            contractDeploymentDay
-        );
     }
 }

@@ -118,6 +118,30 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
         require(significance >= MIN_SIGNIFICANCE && significance <= MAX_SIGNIFICANCE, "Invalid significance");
 
         // Verify EIP-712 signature
+        _verifySignature(user, interaction, nonce, signature);
+
+        // Extract interaction type and check cooldown
+        string memory interactionType = _extractInteractionType(interaction);
+        _checkCooldown(user, interactionType);
+
+        // Calculate and store final score, update stats in one operation
+        uint256 finalScore = _calculateScore(interactionType, significance);
+        _updateUserStats(user, interactionType, finalScore);
+
+        // Increment nonce
+        nonces[user]++;
+
+        // Notify minting contract and emit events
+        _notifyMintingContract(user, interaction, finalScore);
+        _emitEvents(user, interaction, finalScore, nonce);
+    }
+
+    function _verifySignature(
+        address user,
+        string calldata interaction,
+        uint256 nonce,
+        bytes calldata signature
+    ) internal view {
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
@@ -128,9 +152,9 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
 
         address recovered = digest.recover(signature);
         require(recovered == user, "Invalid signature");
+    }
 
-        // Extract interaction type and check cooldown
-        string memory interactionType = _extractInteractionType(interaction);
+    function _checkCooldown(address user, string memory interactionType) internal {
         InteractionType memory iType = interactionTypes[interactionType];
 
         if (iType.isActive && iType.cooldownPeriod > 0) {
@@ -140,15 +164,9 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
             );
             lastInteractionTime[user][interactionType] = block.timestamp;
         }
+    }
 
-        // Calculate and store final score, update stats in one operation
-        uint256 finalScore = _calculateScore(interactionType, significance);
-        _updateUserStats(user, interactionType, finalScore);
-
-        // Increment nonce
-        nonces[user]++;
-
-        // Notify minting contract if available
+    function _notifyMintingContract(address user, string calldata interaction, uint256 finalScore) internal {
         if (address(mintingContract) != address(0)) {
             try mintingContract.recordInteraction(user, interaction, finalScore) {
                 // Success - interaction recorded for potential rewards
@@ -156,11 +174,14 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
                 // Fail silently - main interaction still succeeds
             }
         }
+    }
 
-        // Create transaction hash and emit event
+    function _emitEvents(address user, string calldata interaction, uint256 finalScore, uint256 nonce) internal {
         bytes32 txHash = keccak256(abi.encodePacked(user, interaction, nonce, block.timestamp));
         emit InteractionPerformed(user, interaction, finalScore, nonce, txHash);
-        emit UserScoreUpdated(user, userStats[user].totalSignificancePoints, userStats[user].totalInteractions);
+        
+        UserStats storage stats = userStats[user];
+        emit UserScoreUpdated(user, stats.totalSignificancePoints, stats.totalInteractions);
     }
 
     function _updateUserStats(address user, string memory interactionType, uint256 finalScore) internal {
@@ -205,12 +226,11 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
     }
 
     // View functions
-    function verifySignature(
-        address user,
-        string calldata interaction,
-        uint256 nonce,
-        bytes calldata signature
-    ) external view returns (bool) {
+    function verifySignature(address user, string calldata interaction, uint256 nonce, bytes calldata signature)
+        external
+        view
+        returns (bool)
+    {
         // Verify EIP-712 signature
         bytes32 digest = keccak256(
             abi.encodePacked(

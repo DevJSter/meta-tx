@@ -39,7 +39,7 @@ contract MetaTxInteractionTest is Test {
     function testExecuteMetaTx() public {
         // Ensure we're past any potential cooldowns from previous tests
         vm.warp(block.timestamp + 7300); // Past longest cooldown (2 hours + buffer)
-        
+
         string memory interaction = "like_post-12345";
         uint256 nonce = 0;
 
@@ -70,7 +70,7 @@ contract MetaTxInteractionTest is Test {
     function testReplayAttackFails() public {
         // Ensure we're past any potential cooldowns from previous tests
         vm.warp(block.timestamp + 7300); // Past longest cooldown (2 hours + buffer)
-        
+
         string memory interaction = "like_post-67890";
         uint256 nonce = 0;
 
@@ -101,7 +101,7 @@ contract MetaTxInteractionTest is Test {
     function testReentrancyAttackFails() public {
         // Ensure we're past any potential cooldowns from previous tests
         vm.warp(block.timestamp + 7300); // Past longest cooldown (2 hours + buffer)
-        
+
         // Deploy attacker with the user private key and target contract address
         ReentrancyAttacker attacker = new ReentrancyAttacker(address(metaTx), user);
 
@@ -169,7 +169,7 @@ contract MetaTxInteractionTest is Test {
     function testSequentialTransactions() public {
         // Ensure we're past any potential cooldowns from previous tests
         vm.warp(block.timestamp + 7300); // Past longest cooldown (2 hours + buffer)
-        
+
         string memory interaction1 = "like_post-seq1";
         string memory interaction2 = "comment_post-seq2";
 
@@ -258,7 +258,7 @@ contract MetaTxInteractionTest is Test {
     function testInteractionTypeScoring() public {
         // Ensure we're past any potential cooldowns from previous tests
         vm.warp(block.timestamp + 7300); // Past longest cooldown (2 hours + buffer)
-        
+
         // Test different interaction types and their scoring
         string memory createPost = "create_post-test-scoring";
         string memory likePost = "like_post-test-scoring";
