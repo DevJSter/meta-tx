@@ -2,24 +2,67 @@
 pragma solidity ^0.8.24;
 
 import "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
+import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
-contract MetaTxInteraction {
+interface IQobitMinting {
+    function recordInteraction(address user, string calldata interaction, uint256 significance) external;
+}
+
+contract MetaTxInteraction is Ownable, ReentrancyGuard {
     using ECDSA for bytes32;
 
-    event InteractionPerformed(address indexed user, string interaction);
+    // Events
+    event InteractionPerformed(
+        address indexed user, string interaction, uint256 significance, uint256 indexed nonce, bytes32 indexed txHash
+    );
+    event RelayerUpdated(address indexed oldRelayer, address indexed newRelayer);
+    event MintingContractUpdated(address indexed oldContract, address indexed newContract);
+    event InteractionTypeAdded(string interactionType, uint256 basePoints);
+    event UserScoreUpdated(address indexed user, uint256 newScore, uint256 totalInteractions);
 
+    // Structs
     struct MetaTx {
         address user;
         string interaction;
         uint256 nonce;
     }
 
+    struct UserStats {
+        uint256 totalInteractions;
+        uint256 totalSignificancePoints;
+        uint256 lastInteractionTime;
+        mapping(string => uint256) interactionCounts;
+    }
+
+    struct InteractionType {
+        uint256 basePoints;
+        uint256 cooldownPeriod;
+        bool isActive;
+    }
+
+    // Constants
     bytes32 public constant META_TX_TYPEHASH = keccak256("MetaTx(address user,string interaction,uint256 nonce)");
+    uint256 public constant MAX_SIGNIFICANCE = 1000; // 10.00 (scaled by 100)
+    uint256 public constant MIN_SIGNIFICANCE = 10; // 0.10 (scaled by 100)
 
+    // State variables
     mapping(address => uint256) public nonces;
-    bytes32 public DOMAIN_SEPARATOR;
+    mapping(address => UserStats) public userStats;
+    mapping(string => InteractionType) public interactionTypes;
+    mapping(address => mapping(string => uint256)) public lastInteractionTime;
 
-    constructor() {
+    bytes32 public DOMAIN_SEPARATOR;
+    address public authorizedRelayer;
+    IQobitMinting public mintingContract;
+
+    // Modifiers
+    modifier onlyRelayer() {
+        require(msg.sender == authorizedRelayer, "Only authorized relayer");
+        _;
+    }
+
+    constructor() Ownable(msg.sender) {
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
@@ -29,13 +72,52 @@ contract MetaTxInteraction {
                 address(this)
             )
         );
+
+        // Initialize common interaction types
+        _addInteractionType("like_post", 10, 300); // 5 min cooldown
+        _addInteractionType("comment_post", 25, 600); // 10 min cooldown
+        _addInteractionType("share_post", 50, 1800); // 30 min cooldown
+        _addInteractionType("create_post", 100, 3600); // 1 hour cooldown
+        _addInteractionType("follow_user", 30, 1800); // 30 min cooldown
+        _addInteractionType("join_community", 75, 7200); // 2 hour cooldown
     }
 
-    function executeMetaTx(address user, string calldata interaction, uint256 nonce, bytes calldata signature)
-        external
-    {
-        require(nonce == nonces[user], "Invalid nonce");
+    function setAuthorizedRelayer(address _relayer) external onlyOwner {
+        address oldRelayer = authorizedRelayer;
+        authorizedRelayer = _relayer;
+        emit RelayerUpdated(oldRelayer, _relayer);
+    }
 
+    function setMintingContract(address _mintingContract) external onlyOwner {
+        address oldContract = address(mintingContract);
+        mintingContract = IQobitMinting(_mintingContract);
+        emit MintingContractUpdated(oldContract, _mintingContract);
+    }
+
+    function addInteractionType(string memory interactionType, uint256 basePoints, uint256 cooldownPeriod)
+        external
+        onlyOwner
+    {
+        _addInteractionType(interactionType, basePoints, cooldownPeriod);
+    }
+
+    function _addInteractionType(string memory interactionType, uint256 basePoints, uint256 cooldownPeriod) internal {
+        interactionTypes[interactionType] =
+            InteractionType({basePoints: basePoints, cooldownPeriod: cooldownPeriod, isActive: true});
+        emit InteractionTypeAdded(interactionType, basePoints);
+    }
+
+    function executeMetaTx(
+        address user,
+        string calldata interaction,
+        uint256 nonce,
+        uint256 significance,
+        bytes calldata signature
+    ) external onlyRelayer nonReentrant {
+        require(nonce == nonces[user], "Invalid nonce");
+        require(significance >= MIN_SIGNIFICANCE && significance <= MAX_SIGNIFICANCE, "Invalid significance");
+
+        // Verify EIP-712 signature
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
@@ -47,10 +129,108 @@ contract MetaTxInteraction {
         address recovered = digest.recover(signature);
         require(recovered == user, "Invalid signature");
 
+        // Extract interaction type and check cooldown
+        string memory interactionType = _extractInteractionType(interaction);
+        InteractionType memory iType = interactionTypes[interactionType];
+
+        if (iType.isActive && iType.cooldownPeriod > 0) {
+            require(
+                block.timestamp >= lastInteractionTime[user][interactionType] + iType.cooldownPeriod,
+                "Interaction on cooldown"
+            );
+            lastInteractionTime[user][interactionType] = block.timestamp;
+        }
+
+        // Calculate and store final score, update stats in one operation
+        uint256 finalScore = _calculateScore(interactionType, significance);
+        _updateUserStats(user, interactionType, finalScore);
+
+        // Increment nonce
         nonces[user]++;
 
-        emit InteractionPerformed(user, interaction);
+        // Notify minting contract if available
+        if (address(mintingContract) != address(0)) {
+            try mintingContract.recordInteraction(user, interaction, finalScore) {
+                // Success - interaction recorded for potential rewards
+            } catch {
+                // Fail silently - main interaction still succeeds
+            }
+        }
+
+        // Create transaction hash and emit event
+        bytes32 txHash = keccak256(abi.encodePacked(user, interaction, nonce, block.timestamp));
+        emit InteractionPerformed(user, interaction, finalScore, nonce, txHash);
+        emit UserScoreUpdated(user, userStats[user].totalSignificancePoints, userStats[user].totalInteractions);
     }
 
-    
+    function _updateUserStats(address user, string memory interactionType, uint256 finalScore) internal {
+        UserStats storage stats = userStats[user];
+        stats.totalInteractions++;
+        stats.totalSignificancePoints += finalScore;
+        stats.lastInteractionTime = block.timestamp;
+        stats.interactionCounts[interactionType]++;
+    }
+
+    function _extractInteractionType(string memory interaction) internal pure returns (string memory) {
+        bytes memory interactionBytes = bytes(interaction);
+        bytes memory result = new bytes(32); // Max length for interaction type
+        uint256 resultLength = 0;
+
+        for (uint256 i = 0; i < interactionBytes.length && resultLength < 32; i++) {
+            if (interactionBytes[i] == bytes1("-")) {
+                break;
+            }
+            result[resultLength] = interactionBytes[i];
+            resultLength++;
+        }
+
+        // Create properly sized bytes array
+        bytes memory finalResult = new bytes(resultLength);
+        for (uint256 i = 0; i < resultLength; i++) {
+            finalResult[i] = result[i];
+        }
+
+        return string(finalResult);
+    }
+
+    function _calculateScore(string memory interactionType, uint256 significance) internal view returns (uint256) {
+        InteractionType memory iType = interactionTypes[interactionType];
+        if (!iType.isActive) {
+            return significance; // Base significance if type not configured
+        }
+
+        // Formula: (basePoints * significance) / 100
+        // This scales the base points by the AI-determined significance
+        return (iType.basePoints * significance) / 100;
+    }
+
+    // View functions
+    function getUserStats(address user)
+        external
+        view
+        returns (uint256 totalInteractions, uint256 totalSignificancePoints, uint256 lastInteractionTimestamp)
+    {
+        UserStats storage stats = userStats[user];
+        return (stats.totalInteractions, stats.totalSignificancePoints, stats.lastInteractionTime);
+    }
+
+    function getUserInteractionCount(address user, string memory interactionType) external view returns (uint256) {
+        return userStats[user].interactionCounts[interactionType];
+    }
+
+    function getInteractionCooldown(address user, string memory interactionType) external view returns (uint256) {
+        InteractionType memory iType = interactionTypes[interactionType];
+        if (!iType.isActive || iType.cooldownPeriod == 0) {
+            return 0;
+        }
+
+        uint256 lastTime = lastInteractionTime[user][interactionType];
+        uint256 nextAllowed = lastTime + iType.cooldownPeriod;
+
+        if (block.timestamp >= nextAllowed) {
+            return 0;
+        }
+
+        return nextAllowed - block.timestamp;
+    }
 }
