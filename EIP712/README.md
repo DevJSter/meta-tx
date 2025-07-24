@@ -476,7 +476,6 @@ Paid: 0.042791450001711658 ETH (1711658 gas * 25.000000001 gwei)
 
 ✅ Sequence #1 on 202102 | Total Paid: 0.084706075003388243 ETH (3388243 gas * avg 25.000000001 gwei)
                                                                                                                                              
-
 ==========================
 
 ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.

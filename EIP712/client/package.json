@@ -9,8 +9,9 @@
     "sign": "node signer.js"
   },
   "dependencies": {
-    "ethers": "^6.0.0",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "dotenv": "^17.2.0",
+    "ethers": "^6.0.0"
   },
   "keywords": [
     "ethereum",

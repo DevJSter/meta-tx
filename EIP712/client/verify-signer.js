@@ -1,8 +1,21 @@
 import { ethers } from 'ethers';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const config = require('../config/env');
 
-// Configuration
-const RPC_URL = 'https://subnets.avax.network/thane/testnet/rpc';
-const CONTRACT_ADDRESS = '0x59b670e9fA9D0A427751Af201D676719a970857b';
+// Use centralized configuration
+const {
+  blockchain,
+  wallet: walletConfig,
+  eip712,
+  server,
+  interactions,
+  helpers
+} = config;
+
+// Configuration from centralized config
+const RPC_URL = blockchain.rpcUrl;
+const CONTRACT_ADDRESS = blockchain.contractAddress;
 
 // Contract ABI for events  
 const contractABI = [
