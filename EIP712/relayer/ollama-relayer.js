@@ -1,6 +1,6 @@
 const express = require('express');
 const ethers = require('ethers');
-const dotenv = require('dotenv');
+const config = require('../config/env');
 const MetaTxInteraction = require('./MetaTxInteraction.json');
 
 // Use global fetch if available (Node.js v18+), otherwise fallback to node-fetch
@@ -11,35 +11,47 @@ try {
   fetch = require('node-fetch');
 }
 
-dotenv.config();
 const app = express();
 app.use(express.json());
 
-// Enhanced configuration with new features
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:latest';
-const PORT = process.env.PORT || 3001;
-const SIGNIFICANCE_THRESHOLD = parseFloat(process.env.SIGNIFICANCE_THRESHOLD) || 0.1;
-const MAX_SIGNIFICANCE = 10.0;
-const MIN_SIGNIFICANCE = 0.1;
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 10; // Max requests per minute per user
-const REJECT_LOW_CONFIDENCE = process.env.REJECT_LOW_CONFIDENCE !== 'false'; // Default: true
+// Use centralized configuration
+const {
+  blockchain,
+  wallet: walletConfig,
+  eip712,
+  ollama,
+  server,
+  validation,
+  interactions,
+  debug,
+  helpers
+} = config;
 
-// Enhanced blockchain setup
-console.log('🔗 Connecting to blockchain...');
-console.log('RPC URL:', process.env.RPC_URL);
-console.log('Contract Address:', process.env.CONTRACT_ADDRESS);
-console.log('Private Key Length:', process.env.RELAYER_PRIVATE_KEY?.length);
+const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl, blockchain.networkConfig);
 
-const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+// Override provider methods to prevent ENS resolution
+provider.resolveName = async (name) => {
+  if (ethers.isAddress(name)) {
+    return name;
+  }
+  throw new Error('ENS resolution is disabled for this network');
+};
+
+// Also override resolveAddress to bypass the internal resolution
+provider.resolveAddress = async (address) => {
+  if (ethers.isAddress(address)) {
+    return address;
+  }
+  throw new Error('ENS resolution is disabled for this network');
+};
+
 console.log('✅ Provider created');
 
-const wallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY, provider);
+const wallet = new ethers.Wallet(walletConfig.relayerPrivateKey, provider);
 console.log('✅ Wallet created:', wallet.address);
 
 const contract = new ethers.Contract(
-  process.env.CONTRACT_ADDRESS,
+  blockchain.contractAddress,
   MetaTxInteraction.abi,
   wallet
 );
@@ -53,13 +65,13 @@ const interactionContexts = new Map();
 
 console.log('🚀 Enhanced EIP-712 Ollama AI Relayer Service');
 console.log('=============================================');
-console.log(`🔗 Contract: ${process.env.CONTRACT_ADDRESS}`);
-console.log(`🌐 Network: ${process.env.RPC_URL}`);
-console.log(`🤖 AI Model: ${OLLAMA_MODEL}`);
-console.log(`📊 Significance Threshold: ${SIGNIFICANCE_THRESHOLD}`);
-console.log(`⚡ Rate Limit: ${RATE_LIMIT_MAX_REQUESTS} req/min per user`);
-console.log(`🎯 Reject Low Confidence: ${REJECT_LOW_CONFIDENCE}`);
-console.log(`🔗 Port: ${PORT}`);
+console.log(`🔗 Contract: ${blockchain.contractAddress}`);
+console.log(`🌐 Network: ${blockchain.rpcUrl}`);
+console.log(`🤖 AI Model: ${ollama.model}`);
+console.log(`📊 Significance Threshold: ${validation.significanceThreshold}`);
+console.log(`⚡ Rate Limit: ${validation.rateLimitMaxRequests} req/min per user`);
+console.log(`🎯 Reject Low Confidence: ${validation.rejectLowConfidence}`);
+console.log(`🔗 Port: ${server.port}`);
 console.log('');
 
 // Middleware for rate limiting
@@ -68,7 +80,7 @@ function rateLimitMiddleware(req, res, next) {
   const now = Date.now();
   
   if (!rateLimitStore.has(userKey)) {
-    rateLimitStore.set(userKey, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    rateLimitStore.set(userKey, { count: 1, resetTime: now + validation.rateLimitWindow });
     return next();
   }
   
@@ -76,15 +88,15 @@ function rateLimitMiddleware(req, res, next) {
   
   if (now > userData.resetTime) {
     // Reset window
-    rateLimitStore.set(userKey, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    rateLimitStore.set(userKey, { count: 1, resetTime: now + validation.rateLimitWindow });
     return next();
   }
   
-  if (userData.count >= RATE_LIMIT_MAX_REQUESTS) {
+  if (userData.count >= validation.rateLimitMaxRequests) {
     return res.status(429).json({
       error: 'Rate limit exceeded',
       resetTime: userData.resetTime,
-      maxRequests: RATE_LIMIT_MAX_REQUESTS
+      maxRequests: validation.rateLimitMaxRequests
     });
   }
   
@@ -112,11 +124,11 @@ app.get('/health', async (req, res) => {
         relayerBalance: ethers.formatEther(balance)
       },
       config: {
-        ollamaUrl: OLLAMA_URL,
-        model: OLLAMA_MODEL,
-        port: PORT,
-        threshold: SIGNIFICANCE_THRESHOLD,
-        rateLimit: `${RATE_LIMIT_MAX_REQUESTS} req/min`
+        ollamaUrl: ollama.url,
+        model: ollama.model,
+        port: server.port,
+        threshold: validation.significanceThreshold,
+        rateLimit: `${validation.rateLimitMaxRequests} req/min`
       }
     });
   } catch (error) {
@@ -131,7 +143,7 @@ app.get('/health', async (req, res) => {
 // Enhanced AI validation function with better context analysis
 async function validateWithAI(interaction, userAddress, userHistory = null) {
   try {
-    console.log(`🤖 Validating interaction with ${OLLAMA_MODEL}: "${interaction}"`);
+    console.log(`🤖 Validating interaction with ${ollama.model}: "${interaction}"`);
     
     // Build context-aware prompt
     let contextInfo = '';
@@ -145,6 +157,8 @@ async function validateWithAI(interaction, userAddress, userHistory = null) {
     const prompt = `
 You are an advanced AI content moderator for a decentralized social media platform that rewards positive interactions with tokens.
 
+CRITICAL: Only HIGH confidence interactions should reach the blockchain to prevent failed transactions.
+
 Analyze this user interaction and provide:
 1. Safety assessment (approve/reject)
 2. Significance score (0.1 to 10.0) - higher for more valuable social contributions
@@ -153,6 +167,11 @@ Analyze this user interaction and provide:
 Interaction: "${interaction}"
 User Address: ${userAddress}${contextInfo}
 
+CONFIDENCE CRITERIA (VERY STRICT):
+- HIGH: Clear, meaningful, specific interactions that obviously add value
+- MEDIUM: Decent interactions but lacking specificity or unclear value
+- LOW: Vague, generic, unclear, or potentially spam interactions
+
 SCORING GUIDELINES:
 - Basic interactions (likes, simple reactions): 0.5-2.0
 - Quality comments, shares: 2.0-5.0  
@@ -160,11 +179,29 @@ SCORING GUIDELINES:
 - Community building, educational content: 6.0-10.0
 - Spam, low-effort, harmful content: 0.1-0.5 (reject)
 
+EXAMPLES OF CONFIDENCE LEVELS:
+HIGH confidence:
+- "create_post-comprehensive_guide_to_smart_contract_security"
+- "comment-excellent_analysis_of_defi_risks_thanks_for_detailed_breakdown"
+- "share_research-blockchain_scalability_solutions_2024_report"
+
+MEDIUM confidence:
+- "comment-interesting_post_thanks"
+- "like_good_content"
+- "follow_blockchain_expert"
+
+LOW confidence (WILL BE REJECTED):
+- "like_post"
+- "good"
+- "nice"
+- "test"
+- Generic or unclear interactions
+
 Consider:
-- Authenticity and effort level
-- Potential value to community
-- Frequency and pattern (avoid spam)
-- Constructive vs. destructive nature
+- Specificity and detail level
+- Clear value proposition
+- Professional/meaningful language
+- Authentic human interaction vs automated/spam
 
 Respond in this EXACT format:
 DECISION: [approve/reject]
@@ -174,11 +211,11 @@ REASON: [detailed explanation of scoring rationale]
 CONFIDENCE: [low/medium/high]
 `;
 
-    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+    const response = await fetch(`${ollama.url}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: OLLAMA_MODEL,
+        model: ollama.model,
         prompt: prompt,
         stream: false,
         options: {
@@ -192,7 +229,7 @@ CONFIDENCE: [low/medium/high]
 
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error(`Model '${OLLAMA_MODEL}' not found. Please check if the model is available in Ollama.`);
+        throw new Error(`Model '${ollama.model}' not found. Please check if the model is available in Ollama.`);
       }
       throw new Error(`Ollama API error: ${response.status} - ${response.statusText}`);
     }
@@ -216,17 +253,17 @@ CONFIDENCE: [low/medium/high]
     const confidence = confidenceMatch ? confidenceMatch[1].toLowerCase() : 'low';
 
     // Validate and clamp significance
-    if (isNaN(significance) || significance < MIN_SIGNIFICANCE) {
-      significance = MIN_SIGNIFICANCE;
-    } else if (significance > MAX_SIGNIFICANCE) {
-      significance = MAX_SIGNIFICANCE;
+    if (isNaN(significance) || significance < validation.minSignificance) {
+      significance = validation.minSignificance;
+    } else if (significance > validation.maxSignificance) {
+      significance = validation.maxSignificance;
     }
 
     // Scale significance to contract format (multiply by 100 for 2 decimal precision)
-    const scaledSignificance = Math.round(significance * 100);
+    const scaledSignificance = helpers.getScaledSignificance(significance);
 
     // Auto-reject if significance too low and confidence is high
-    if (scaledSignificance < (SIGNIFICANCE_THRESHOLD * 100) && confidence === 'high') {
+    if (scaledSignificance < (validation.significanceThreshold * 100) && confidence === 'high') {
       decision = 'reject';
     }
 
@@ -243,8 +280,8 @@ CONFIDENCE: [low/medium/high]
     console.error('❌ AI validation error:', error);
     return {
       approved: false,
-      significance: Math.round(MIN_SIGNIFICANCE * 100),
-      originalSignificance: MIN_SIGNIFICANCE,
+      significance: helpers.getScaledSignificance(validation.minSignificance),
+      originalSignificance: validation.minSignificance,
       category: 'error',
       reason: `AI validation failed: ${error.message}`,
       confidence: 'low',
@@ -253,59 +290,38 @@ CONFIDENCE: [low/medium/high]
   }
 }
 
-// Enhanced fallback validation with pattern recognition
+// Enhanced fallback validation with pattern recognition (CONSERVATIVE)
 function enhancedFallbackValidation(interaction, userAddress) {
-  console.log('🔄 Using enhanced fallback validation...');
+  console.log('🔄 Using enhanced fallback validation (conservative mode)...');
   
   const interactionLower = interaction.toLowerCase();
   
-  // Define interaction patterns with scoring
-  const patterns = {
-    high_value: {
-      patterns: ['create_post', 'write_article', 'start_discussion', 'educational_', 'tutorial_'],
-      baseScore: 6.0,
-      approved: true
-    },
-    medium_value: {
-      patterns: ['comment_', 'reply_', 'share_post', 'join_community', 'follow_user'],
-      baseScore: 3.0,
-      approved: true
-    },
-    basic_value: {
-      patterns: ['like_', 'react_', 'vote_', 'bookmark_'],
-      baseScore: 1.0,
-      approved: true
-    },
-    suspicious: {
-      patterns: ['spam_', 'bot_', 'fake_', 'scam_', 'abuse_'],
-      baseScore: 0.1,
-      approved: false
-    }
-  };
+  // Use centralized interaction patterns
+  const patterns = interactions.patterns;
 
-  // Check patterns
+  // Check patterns - BUT be more conservative with confidence
   for (const [category, config] of Object.entries(patterns)) {
     for (const pattern of config.patterns) {
       if (interactionLower.includes(pattern)) {
-        const scaledScore = Math.round(config.baseScore * 100);
+        const scaledScore = helpers.getScaledSignificance(config.baseScore);
         return {
-          approved: config.approved,
+          approved: config.approved && config.baseScore >= 2.0, // Only approve if score is decent
           significance: scaledScore,
           originalSignificance: config.baseScore,
           category: category,
-          reason: `Fallback: Matched ${category} pattern "${pattern}"`,
-          confidence: 'medium',
+          reason: `Fallback: Matched ${category} pattern "${pattern}" - conservative approval`,
+          confidence: 'low', // Always low confidence for fallback
           fallback: true
         };
       }
     }
   }
 
-  // Default for unrecognized patterns
+  // Default for unrecognized patterns - ALWAYS LOW CONFIDENCE
   return {
     approved: false,
-    significance: Math.round(MIN_SIGNIFICANCE * 100),
-    originalSignificance: MIN_SIGNIFICANCE,
+    significance: helpers.getScaledSignificance(validation.minSignificance),
+    originalSignificance: validation.minSignificance,
     category: 'unknown',
     reason: 'Fallback: Unrecognized interaction pattern - please provide more descriptive interaction',
     confidence: 'low',
@@ -316,12 +332,19 @@ function enhancedFallbackValidation(interaction, userAddress) {
 // Enhanced user history fetching
 async function getUserHistory(userAddress) {
   try {
-    const [totalInteractions, totalPoints] = await contract.getUserStats(userAddress);
+    // Use direct RPC call to bypass ENS resolution
+    const statsData = contract.interface.encodeFunctionData('getUserStats', [userAddress]);
+    const result = await provider.call({
+      to: ethers.getAddress(blockchain.contractAddress), // Ensure proper address format
+      data: statsData
+    });
+    const [totalInteractions, totalSignificancePoints, lastInteractionTimestamp] = contract.interface.decodeFunctionResult('getUserStats', result);
     
     // Get recent interaction types (simplified - in production you'd want more sophisticated tracking)
     return {
       totalInteractions: parseInt(totalInteractions.toString()),
-      totalPoints: parseInt(totalPoints.toString()),
+      totalPoints: parseInt(totalSignificancePoints.toString()),
+      lastInteractionTime: parseInt(lastInteractionTimestamp.toString()),
       recentTypes: [], // Would need event parsing for real implementation
       lastInteraction: null
     };
@@ -353,7 +376,36 @@ app.get('/nonce/:address', async (req, res) => {
   }
 
   try {
-    const nonce = await contract.nonces(address);
+    // Use raw JSON-RPC call to completely bypass ethers address resolution
+    const nonceData = contract.interface.encodeFunctionData('nonces', [address]);
+    
+    // Use the actual deployed contract address from centralized config
+    const contractAddress = blockchain.contractAddress;
+    console.log(`🔍 Debug: Contract address: "${contractAddress}", length: ${contractAddress.length}`);
+    console.log(`🔍 Debug: Address chars:`, contractAddress.split('').map((c, i) => `${i}:'${c}'`).join(' '));
+    console.log(`🔍 Debug: Nonce data: ${nonceData}`);
+    
+    const response = await fetch(blockchain.rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_call',
+        params: [{
+          to: contractAddress,
+          data: nonceData
+        }, 'latest'],
+        id: 1
+      })
+    });
+    
+    const rpcResult = await response.json();
+    if (rpcResult.error) {
+      throw new Error(`RPC Error: ${rpcResult.error.message}`);
+    }
+    
+    const nonce = contract.interface.decodeFunctionResult('nonces', rpcResult.result)[0];
+    
     console.log(`📊 Current nonce for ${address}: ${nonce}`);
     
     res.json({ 
@@ -378,14 +430,22 @@ app.get('/user/:address/stats', async (req, res) => {
   }
 
   try {
-    const [totalInteractions, totalPoints, lastInteractionTime] = await contract.getUserStats(address);
+    // Use direct RPC call to bypass ENS resolution
+    const statsData = contract.interface.encodeFunctionData('getUserStats', [address]);
+    const result = await provider.call({
+      to: ethers.getAddress(blockchain.contractAddress), // Ensure proper address format
+      data: statsData
+    });
+    const [totalInteractions, totalSignificancePoints, lastInteractionTimestamp] = contract.interface.decodeFunctionResult('getUserStats', result);
     
     res.json({
       address: address,
       totalInteractions: totalInteractions.toString(),
-      totalPoints: totalPoints.toString(),
-      lastInteractionTime: lastInteractionTime.toString(),
-      lastInteractionDate: new Date(parseInt(lastInteractionTime.toString()) * 1000).toISOString()
+      totalPoints: totalSignificancePoints.toString(),
+      lastInteractionTime: lastInteractionTimestamp.toString(),
+      lastInteractionDate: lastInteractionTimestamp.toString() !== '0' 
+        ? new Date(parseInt(lastInteractionTimestamp.toString()) * 1000).toISOString()
+        : null
     });
   } catch (error) {
     console.error('❌ Error fetching user stats:', error);
@@ -420,7 +480,14 @@ app.post('/relayMetaTx', async (req, res) => {
 
   // Check if nonce matches the current contract nonce
   try {
-    const currentNonce = await contract.nonces(user);
+    // Use direct RPC call to bypass ENS resolution
+    const nonceData = contract.interface.encodeFunctionData('nonces', [user]);
+    const result = await provider.call({
+      to: ethers.getAddress(blockchain.contractAddress), // Ensure proper address format
+      data: nonceData
+    });
+    const currentNonce = contract.interface.decodeFunctionResult('nonces', result)[0];
+    
     console.log(`📊 Contract nonce for ${user}: ${currentNonce}, Provided nonce: ${nonce}`);
     
     if (BigInt(nonce) !== currentNonce) {
@@ -470,26 +537,40 @@ app.post('/relayMetaTx', async (req, res) => {
     });
   }
 
-  // Check confidence level - reject low confidence transactions
-  if (REJECT_LOW_CONFIDENCE && validationResult.confidence === 'low') {
-    console.log('❌ Interaction rejected due to low AI confidence');
+  // STRICT: Always reject low confidence transactions to prevent failed transactions on blockchain
+  if (validationResult.confidence === 'low') {
+    console.log('❌ Interaction rejected due to low AI confidence - preventing blockchain spam');
     return res.status(400).json({ 
       error: 'Interaction rejected due to low AI confidence',
       reason: validationResult.reason,
       category: validationResult.category,
       significance: validationResult.originalSignificance,
       confidence: validationResult.confidence,
-      suggestion: 'Please provide a clearer or more detailed interaction description'
+      suggestion: 'Please provide a clearer, more detailed, and meaningful interaction description',
+      note: 'Low confidence transactions are blocked to prevent failed transactions on the blockchain explorer'
+    });
+  }
+
+  // Additional check: Only allow high confidence transactions for contract execution
+  if (validationResult.confidence !== 'high') {
+    console.log('❌ Interaction requires high confidence for blockchain execution');
+    return res.status(400).json({ 
+      error: 'Only high confidence interactions are allowed for blockchain execution',
+      reason: validationResult.reason,
+      category: validationResult.category,
+      significance: validationResult.originalSignificance,
+      confidence: validationResult.confidence,
+      suggestion: 'Please provide a more specific and meaningful interaction that clearly demonstrates value to the community'
     });
   }
 
   // Check significance threshold (using scaled value)
-  if (validationResult.significance < (SIGNIFICANCE_THRESHOLD * 100)) {
-    console.log(`❌ Interaction significance too low: ${validationResult.originalSignificance} < ${SIGNIFICANCE_THRESHOLD}`);
+  if (validationResult.significance < (validation.significanceThreshold * 100)) {
+    console.log(`❌ Interaction significance too low: ${validationResult.originalSignificance} < ${validation.significanceThreshold}`);
     return res.status(400).json({ 
       error: 'Interaction significance below threshold',
       significance: validationResult.originalSignificance,
-      threshold: SIGNIFICANCE_THRESHOLD,
+      threshold: validation.significanceThreshold,
       reason: validationResult.reason,
       category: validationResult.category
     });
@@ -508,8 +589,11 @@ app.post('/relayMetaTx', async (req, res) => {
     console.log(`  Significance: ${validationResult.significance}`);
     console.log(`  Signature: ${signature}`);
     
-    // First, let's simulate the call to see if it would revert
+    // Enhanced static call validation with better error detection
     try {
+      console.log('🔍 Performing enhanced static call validation...');
+      
+      // Perform the static call to validate the transaction
       await contract.executeMetaTx.staticCall(
         user, 
         interaction, 
@@ -518,16 +602,40 @@ app.post('/relayMetaTx', async (req, res) => {
         signature
       );
       console.log('✅ Static call successful - transaction should work');
+      
     } catch (staticError) {
       console.error('❌ Static call failed - transaction will revert:', staticError.message);
+      console.error('❌ Static call error details:', staticError);
       
-      // Try to decode the revert reason
-      if (staticError.data) {
-        console.log('Revert data:', staticError.data);
+      // Enhanced error analysis
+      let errorReason = 'Unknown revert reason';
+      let errorCategory = 'unknown';
+      
+      if (staticError.message.includes('signature') || staticError.message.includes('Invalid signature')) {
+        errorReason = 'Invalid signature or signature verification failed';
+        errorCategory = 'signature_error';
+      } else if (staticError.message.includes('nonce') || staticError.message.includes('Invalid nonce')) {
+        errorReason = 'Nonce mismatch or nonce already used';
+        errorCategory = 'nonce_error';
+      } else if (staticError.message.includes('insufficient')) {
+        errorReason = 'Insufficient balance or allowance';
+        errorCategory = 'balance_error';
+      } else if (staticError.message.includes('cooldown')) {
+        errorReason = 'Interaction is on cooldown period';
+        errorCategory = 'cooldown_error';
+      } else if (staticError.message.includes('significance')) {
+        errorReason = 'Invalid significance value';
+        errorCategory = 'significance_error';
+      } else if (staticError.data) {
+        console.log('🔍 Revert data:', staticError.data);
+        errorReason = `Contract revert with data: ${staticError.data}`;
+        errorCategory = 'contract_revert';
       }
       
-      return res.status(500).json({ 
-        error: 'Transaction would revert',
+      return res.status(400).json({ 
+        error: 'Transaction simulation failed - would revert on blockchain',
+        reason: errorReason,
+        category: errorCategory,
         details: staticError.message,
         validation: validationResult,
         debugInfo: {
@@ -535,8 +643,28 @@ app.post('/relayMetaTx', async (req, res) => {
           interaction,
           nonce: nonce.toString(),
           significance: validationResult.significance,
-          signatureLength: signature.length
+          signatureLength: signature.length,
+          staticCallError: staticError.code || 'UNKNOWN'
         }
+      });
+    }
+
+    // Final pre-execution validation
+    console.log('🔄 Performing final pre-execution checks...');
+    
+    // Verify relayer has sufficient balance for gas
+    const relayerBalance = await provider.getBalance(wallet.address);
+    const estimatedGasLimit = validation.estimatedGasLimit; // Conservative estimate
+    const gasPrice = (await provider.getFeeData()).gasPrice || validation.defaultGasPrice;
+    const estimatedGasCost = estimatedGasLimit * gasPrice;
+    
+    if (relayerBalance < estimatedGasCost) {
+      console.error('❌ Relayer has insufficient balance for gas');
+      return res.status(500).json({ 
+        error: 'Relayer insufficient balance',
+        details: 'The relayer does not have enough ETH to pay for gas',
+        relayerBalance: ethers.formatEther(relayerBalance),
+        estimatedGasCost: ethers.formatEther(estimatedGasCost)
       });
     }
 
@@ -545,11 +673,68 @@ app.post('/relayMetaTx', async (req, res) => {
       interaction, 
       nonce, 
       validationResult.significance, // Pass scaled significance to contract
-      signature
+      signature,
+      {
+        gasLimit: estimatedGasLimit // Set explicit gas limit
+      }
     );
     console.log(`⏳ Transaction sent: ${tx.hash}`);
     
-    const receipt = await tx.wait();
+    // Wait for transaction with timeout
+    let receipt;
+    try {
+      receipt = await Promise.race([
+        tx.wait(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Transaction timeout')), validation.transactionTimeout)
+        )
+      ]);
+    } catch (waitError) {
+      console.error('❌ Transaction wait failed:', waitError);
+      
+      if (waitError.message === 'Transaction timeout') {
+        return res.status(408).json({ 
+          error: 'Transaction timeout',
+          details: 'Transaction was sent but confirmation timed out',
+          txHash: tx.hash,
+          validation: validationResult
+        });
+      }
+      
+      // Check if transaction was mined but reverted
+      try {
+        const txReceipt = await provider.getTransactionReceipt(tx.hash);
+        if (txReceipt && txReceipt.status === 0) {
+          console.error('❌ Transaction was mined but reverted');
+          return res.status(400).json({ 
+            error: 'Transaction reverted on blockchain',
+            details: 'Transaction was mined but execution failed',
+            txHash: tx.hash,
+            blockNumber: txReceipt.blockNumber,
+            gasUsed: txReceipt.gasUsed.toString(),
+            validation: validationResult
+          });
+        }
+      } catch (receiptError) {
+        console.error('❌ Could not fetch transaction receipt:', receiptError);
+      }
+      
+      throw waitError;
+    }
+    
+    // Verify transaction was successful
+    if (receipt.status === 0) {
+      console.error('❌ Transaction mined but reverted');
+      return res.status(400).json({ 
+        error: 'Transaction reverted after mining',
+        details: 'Transaction was included in a block but execution failed',
+        txHash: tx.hash,
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed.toString(),
+        validation: validationResult
+      });
+    }
+    
     console.log(`✅ Transaction confirmed: ${tx.hash}`);
     
     res.json({ 
@@ -621,7 +806,12 @@ app.post('/debug', async (req, res) => {
     }
 
     // Get contract nonce
-    const contractNonce = await contract.nonces(user);
+    const nonceData = contract.interface.encodeFunctionData('nonces', [user]);
+    const nonceResult = await provider.call({
+      to: ethers.getAddress(blockchain.contractAddress), // Ensure proper address format
+      data: nonceData
+    });
+    const contractNonce = contract.interface.decodeFunctionResult('nonces', nonceResult)[0];
     console.log(`📊 Contract nonce: ${contractNonce}, Provided nonce: ${nonce}`);
 
     // Get domain separator from contract
@@ -633,20 +823,8 @@ app.post('/debug', async (req, res) => {
     console.log(`📝 MetaTx TypeHash: ${metaTxTypeHash}`);
 
     // Reconstruct the message hash that should have been signed
-    const domain = {
-      name: "MetaTxInteraction",
-      version: "1", 
-      chainId: 202102,
-      verifyingContract: process.env.CONTRACT_ADDRESS
-    };
-
-    const types = {
-      MetaTx: [
-        { name: "user", type: "address" },
-        { name: "interaction", type: "string" },
-        { name: "nonce", type: "uint256" }
-      ]
-    };
+    const domain = eip712.domain;
+    const types = eip712.types;
 
     const message = {
       user: user,
@@ -693,13 +871,13 @@ app.post('/debug', async (req, res) => {
 app.get('/ollama-status', async (req, res) => {
   try {
     // Check if Ollama is running
-    const healthResponse = await fetch(`${OLLAMA_URL}/api/tags`);
+    const healthResponse = await fetch(`${ollama.url}/api/tags`);
     
     if (!healthResponse.ok) {
       return res.status(500).json({
         status: 'error',
         message: 'Ollama API is not accessible',
-        ollamaUrl: OLLAMA_URL,
+        ollamaUrl: ollama.url,
         suggestions: [
           'Make sure Ollama is installed and running',
           'Check if the OLLAMA_URL is correct',
@@ -713,19 +891,19 @@ app.get('/ollama-status', async (req, res) => {
     
     // Check if the configured model is available
     const modelAvailable = availableModels.some(model => 
-      model.includes(OLLAMA_MODEL) || OLLAMA_MODEL.includes(model.split(':')[0])
+      model.includes(ollama.model) || ollama.model.includes(model.split(':')[0])
     );
 
     res.json({
       status: 'ok',
-      ollamaUrl: OLLAMA_URL,
-      configuredModel: OLLAMA_MODEL,
+      ollamaUrl: ollama.url,
+      configuredModel: ollama.model,
       modelAvailable: modelAvailable,
       availableModels: availableModels,
       suggestions: !modelAvailable ? [
-        `Model '${OLLAMA_MODEL}' not found`,
+        `Model '${ollama.model}' not found`,
         'Available models: ' + availableModels.join(', '),
-        'Try: ollama pull ' + OLLAMA_MODEL,
+        'Try: ollama pull ' + ollama.model,
         'Or update OLLAMA_MODEL environment variable to an available model'
       ] : ['All good! AI validation should work.']
     });
@@ -734,7 +912,7 @@ app.get('/ollama-status', async (req, res) => {
       status: 'error',
       message: 'Failed to check Ollama status',
       error: error.message,
-      ollamaUrl: OLLAMA_URL,
+      ollamaUrl: ollama.url,
       suggestions: [
         'Make sure Ollama is installed and running',
         'Check if the OLLAMA_URL is correct',
@@ -754,14 +932,14 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🌐 EIP-712 Ollama AI Relayer running on port ${PORT}`);
-  console.log(`📝 Health check: http://localhost:${PORT}/health`);
-  console.log(`🧪 Test validation: POST http://localhost:${PORT}/validate`);
-  console.log(`🚀 Relay endpoint: POST http://localhost:${PORT}/relayMetaTx`);
-  console.log(`📊 Get nonce: GET http://localhost:${PORT}/nonce/:address`);
-  console.log(`🔧 Ollama status: GET http://localhost:${PORT}/ollama-status`);
-  console.log(`🔍 Debug endpoint: POST http://localhost:${PORT}/debug`);
+app.listen(server.port, () => {
+  console.log(`🌐 EIP-712 Ollama AI Relayer running on port ${server.port}`);
+  console.log(`📝 Health check: http://localhost:${server.port}/health`);
+  console.log(`🧪 Test validation: POST http://localhost:${server.port}/validate`);
+  console.log(`🚀 Relay endpoint: POST http://localhost:${server.port}/relayMetaTx`);
+  console.log(`📊 Get nonce: GET http://localhost:${server.port}/nonce/:address`);
+  console.log(`🔧 Ollama status: GET http://localhost:${server.port}/ollama-status`);
+  console.log(`🔍 Debug endpoint: POST http://localhost:${server.port}/debug`);
   console.log('');
 });
 

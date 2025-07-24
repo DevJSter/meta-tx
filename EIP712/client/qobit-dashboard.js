@@ -1,13 +1,26 @@
 import { ethers } from 'ethers';
 import axios from 'axios';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const config = require('../config/env');
 
-// Configuration
-const provider = new ethers.JsonRpcProvider('https://subnets.avax.network/thane/testnet/rpc');
-const qobitTokenAddress = '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1'; // QobitToken contract
-const metaTxContractAddress = '0x59b670e9fA9D0A427751Af201D676719a970857b'; // MetaTxInteraction contract
-const relayerBaseUrl = 'http://localhost:3001';
+// Use centralized configuration
+const {
+  blockchain,
+  wallet: walletConfig,
+  eip712,
+  server,
+  interactions,
+  helpers
+} = config;
 
-// User wallet (using the test account that we've been using)
+// Configuration from centralized config
+const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
+const qobitTokenAddress = blockchain.qobitContractAddress;
+const metaTxContractAddress = blockchain.contractAddress;
+const relayerBaseUrl = server.relayerBaseUrl;
+
+// User wallet (using an alternative test account for dashboard)
 const privateKey = '0x59c6995e998f97436de2d8d75b5e46c8b32b4acd5ee8a4a71a5b073e7a6b9ad0';
 const userWallet = new ethers.Wallet(privateKey, provider);
 
@@ -263,7 +276,7 @@ async function main() {
         console.log('  node qobit-dashboard.js earn [count]  # Perform interactions (default: 3)');
         console.log('  node qobit-dashboard.js full          # Full demo workflow');
         console.log('\nCurrent Configuration:');
-        console.log(`  🔗 RPC: https://subnets.avax.network/thane/testnet/rpc`);
+        console.log(`  🔗 RPC: ${blockchain.rpcUrl}`);
         console.log(`  💰 Token: ${qobitTokenAddress}`);
         console.log(`  📄 Contract: ${metaTxContractAddress}`);
         console.log(`  🚀 Relayer: ${relayerBaseUrl}`);

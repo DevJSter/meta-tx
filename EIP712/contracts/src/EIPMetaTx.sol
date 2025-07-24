@@ -205,6 +205,25 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
     }
 
     // View functions
+    function verifySignature(
+        address user,
+        string calldata interaction,
+        uint256 nonce,
+        bytes calldata signature
+    ) external view returns (bool) {
+        // Verify EIP-712 signature
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPARATOR,
+                keccak256(abi.encode(META_TX_TYPEHASH, user, keccak256(bytes(interaction)), nonce))
+            )
+        );
+
+        address recovered = digest.recover(signature);
+        return recovered == user;
+    }
+
     function getUserStats(address user)
         external
         view

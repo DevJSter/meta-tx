@@ -1,50 +1,34 @@
 import { ethers } from 'ethers';
 import axios from 'axios';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const config = require('../config/env');
+
+// Use centralized configuration
+const {
+  blockchain,
+  wallet: walletConfig,
+  eip712,
+  server,
+  interactions,
+  helpers
+} = config;
 
 // Enhanced configuration
-const provider = new ethers.JsonRpcProvider('https://subnets.avax.network/thane/testnet/rpc');
-const contractAddress = '0x59b670e9fA9D0A427751Af201D676719a970857b';
-const relayerBaseUrl = 'http://localhost:3001';
+const provider = new ethers.JsonRpcProvider(blockchain.rpcUrl);
+const contractAddress = blockchain.contractAddress;
+const relayerBaseUrl = server.relayerBaseUrl;
 
 // User wallet configuration
-const privateKey = '0x829d62188cc5ff0a1dc21cf31efb7cb36d415ced40e71b9ee294a82f3025a7b3';
+const privateKey = walletConfig.testUserPrivateKey;
 const userWallet = new ethers.Wallet(privateKey, provider);
 
-// EIP-712 domain and types (unchanged for compatibility)
-const domain = {
-  name: "QoneqtMetaTx",
-  version: "1",
-  chainId: 202102,
-  verifyingContract: contractAddress
-};
+// EIP-712 domain and types from centralized config
+const domain = eip712.domain;
+const types = eip712.types;
 
-const types = {
-  MetaTx: [
-    { name: "user", type: "address" },
-    { name: "interaction", type: "string" },
-    { name: "nonce", type: "uint256" }
-  ]
-};
-
-// Enhanced interaction examples with different significance levels
-const interactionExamples = [
-  // High-value interactions
-  'create_post-educational_blockchain_guide_2024',
-  'create_post-community_discussion_dao_governance',
-  'write_article-defi_security_best_practices',
-  
-  // Medium-value interactions
-  'comment_post-thanks_for_sharing_this_insight',
-  'share_post-valuable_research_data_analysis',
-  'join_community-blockchain_developers_guild',
-  'follow_user-expert_smart_contract_auditor',
-  
-  // Basic-value interactions
-  'like_post-12345',
-  'react_post-heart_emoji_67890',
-  'bookmark_post-save_for_later_98765',
-  'vote_poll-option_a_governance_proposal_123'
-];
+// Enhanced interaction examples from centralized config
+const interactionExamples = interactions.examples;
 
 // Utility functions
 async function delay(ms) {
@@ -52,7 +36,7 @@ async function delay(ms) {
 }
 
 function getRandomInteraction() {
-  return interactionExamples[Math.floor(Math.random() * interactionExamples.length)];
+  return helpers.getRandomInteraction();
 }
 
 async function getUserStats(address) {
@@ -144,7 +128,7 @@ async function signAndSend(interaction = null, showStats = false) {
     }
 
     // Sign the meta-transaction
-    console.log('\n✍️  Signing meta-transaction...');
+    console.log('\n  Signing meta-transaction...');
     const value = {
       user: userWallet.address,
       interaction: selectedInteraction,
