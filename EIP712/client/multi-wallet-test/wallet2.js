@@ -30,44 +30,44 @@ const types = eip712.types;
 
 // High significance interactions (Expected: >6.0 - should be ACCEPTED)
 const highInteractions = [
-  'create_post-comprehensive_blockchain_security_audit_methodologies_and_best_practices_for_enterprise_defi_protocols_2024',
-  'write_article-advanced_ethereum_virtual_machine_optimization_techniques_for_gas_efficient_smart_contract_development',
-  'create_post-zero_knowledge_proofs_implementation_guide_for_privacy_preserving_decentralized_applications',
-  'write_article-comprehensive_analysis_of_layer2_scaling_solutions_rollups_sidechains_and_state_channels',
-  'create_post-dao_governance_framework_design_principles_token_economics_and_voting_mechanisms_research',
-  'write_article-cross_chain_interoperability_protocols_bridge_security_and_atomic_swap_implementations',
-  'create_post-nft_marketplace_architecture_smart_contract_design_patterns_and_royalty_distribution_systems',
-  'write_article-institutional_defi_adoption_regulatory_compliance_and_risk_management_strategies',
-  'create_post-blockchain_consensus_mechanisms_comparative_analysis_proof_of_stake_vs_proof_of_work_efficiency',
-  'write_article-web3_identity_management_decentralized_identity_protocols_and_privacy_preservation_methods'
+  'write_article-advanced_solidity_gas_optimization_techniques_comprehensive_guide_for_enterprise_smart_contracts',
+  'create_post-ethereum_virtual_machine_deep_dive_opcodes_execution_environment_and_state_transitions',
+  'write_article-zero_knowledge_proofs_zk_snarks_implementation_privacy_preserving_blockchain_applications',
+  'create_post-mev_maximum_extractable_value_protection_strategies_for_defi_protocol_developers',
+  'write_article-decentralized_storage_solutions_ipfs_arweave_filecoin_comparative_analysis_and_use_cases',
+  'create_post-consensus_algorithm_performance_analysis_proof_of_stake_validator_economics_and_security',
+  'write_article-blockchain_governance_models_research_decentralized_autonomous_organizations_and_token_voting',
+  'create_post-layer3_application_specific_blockchains_custom_execution_environments_and_specialized_consensus',
+  'write_article-quantum_resistant_cryptography_for_blockchain_post_quantum_security_and_future_proofing',
+  'create_post-automated_market_maker_liquidity_optimization_impermanent_loss_mitigation_strategies'
 ];
 
 // Medium significance interactions (Expected: 3.0-5.9 - should be ACCEPTED)
 const mediumInteractions = [
-  'comment_post-excellent_technical_analysis_of_ethereum_merge_implications_for_validators_and_staking_rewards',
-  'share_post-important_security_vulnerability_disclosure_in_popular_defi_lending_protocol_community_alert',
-  'comment_post-helpful_debugging_guide_for_solidity_reentrancy_attacks_and_prevention_strategies',
-  'join_community-ethereum_core_developers_association_contributing_to_protocol_development',
-  'follow_user-blockchain_security_researcher_specializing_in_smart_contract_formal_verification',
-  'comment_post-insightful_perspective_on_dao_treasury_management_and_decentralized_governance_models',
-  'share_post-comprehensive_web3_development_resources_tools_frameworks_and_educational_materials',
-  'comment_post-detailed_explanation_of_consensus_mechanisms_and_their_impact_on_network_decentralization',
-  'join_community-defi_protocol_builders_guild_for_collaborative_development_and_code_reviews',
-  'follow_user-experienced_smart_contract_auditor_with_expertise_in_defi_and_nft_protocols'
+  'comment_post-detailed_technical_review_of_ethereum_london_hard_fork_eip1559_fee_mechanism_analysis',
+  'share_post-critical_security_patch_announcement_for_popular_defi_lending_protocol_community_awareness',
+  'comment_post-constructive_feedback_on_dao_governance_whitepaper_voting_mechanisms_and_token_economics',
+  'join_community-layer2_protocol_developers_dao_contributing_to_optimistic_rollup_development',
+  'follow_user-experienced_defi_yield_farming_strategist_specializing_in_liquidity_mining_optimization',
+  'comment_post-thorough_technical_analysis_of_gas_optimization_patterns_in_solidity_smart_contracts',
+  'share_post-comprehensive_smart_contract_audit_report_findings_security_vulnerabilities_and_fixes',
+  'comment_post-valuable_insights_on_tokenomics_design_inflation_deflation_mechanisms_and_utility',
+  'join_community-nft_creators_collaborative_space_for_digital_art_and_blockchain_technology',
+  'follow_user-blockchain_infrastructure_engineer_with_expertise_in_node_operations_and_networking'
 ];
 
 // Low significance interactions (Expected: <0.1 - should be REJECTED)
 const lowInteractions = [
-  'like_post-12345',
-  'react_post-👍',
-  'bookmark_post-save',
-  'vote_poll-a',
-  'like_post-news',
-  'react_post-❤️',
-  'bookmark_post-later',
-  'vote_poll-yes',
-  'like_post-update',
-  'react_post-🔥'
+  'like_post-77777',
+  'react_post-🚀',
+  'bookmark_post-cool',
+  'vote_poll-b',
+  'like_post-nice',
+  'react_post-👌',
+  'bookmark_post-read',
+  'vote_poll-no',
+  'like_post-good',
+  'react_post-💯'
 ];
 
 // Utility functions
@@ -80,7 +80,7 @@ function getRandomFromArray(array) {
 }
 
 async function signAndSend(interaction, category, maxRetries = 3) {
-  console.log(`\n📝 [WALLET-1] Processing ${category} interaction: "${interaction}"`);
+  console.log(`\n📝 [WALLET-2] Processing ${category} interaction: "${interaction}"`);
   
   // Create a fresh random wallet for this transaction to bypass cooldown
   const userWallet = createRandomWallet();
@@ -158,7 +158,7 @@ async function signAndSend(interaction, category, maxRetries = 3) {
 }
 
 async function runAllInteractions() {
-  console.log('\n🚀 WALLET-1 MULTI-CATEGORY INTERACTION TEST');
+  console.log('\n🚀 WALLET-2 MULTI-CATEGORY INTERACTION TEST');
   console.log('==========================================');
   console.log('🆕 Using random wallets for each transaction (bypasses cooldown)');
   console.log('📊 Test Plan: 10 High + 10 Medium + 10 Low interactions');
@@ -182,7 +182,7 @@ async function runAllInteractions() {
       } else {
         successCount++;
       }
-      await delay(2000); // 2s delay between transactions
+      await delay(2100); // 2.1s delay between transactions (staggered from wallet1)
     } catch (error) {
       console.log(`❌ High interaction ${i + 1} failed after all retries, continuing...`);
       failedCount++;
@@ -202,7 +202,7 @@ async function runAllInteractions() {
       } else {
         successCount++;
       }
-      await delay(1800); // 1.8s delay between transactions
+      await delay(1900); // 1.9s delay between transactions (staggered from wallet1)
     } catch (error) {
       console.log(`❌ Medium interaction ${i + 1} failed after all retries, continuing...`);
       failedCount++;
@@ -223,7 +223,7 @@ async function runAllInteractions() {
         console.log(`⚠️  UNEXPECTED: Low significance interaction was accepted!`);
         successCount++;
       }
-      await delay(1500); // 1.5s delay between transactions
+      await delay(1600); // 1.6s delay between transactions (staggered from wallet1)
     } catch (error) {
       console.log(`❌ Low interaction ${i + 1} failed unexpectedly, continuing...`);
       failedCount++;
@@ -231,7 +231,7 @@ async function runAllInteractions() {
   }
 
   // Final summary
-  console.log('\n🏁 WALLET-1 TEST COMPLETE');
+  console.log('\n🏁 WALLET-2 TEST COMPLETE');
   console.log('========================');
   console.log(`✅ Accepted (High/Medium): ${successCount}/${totalCount - 10} (should be 20)`);
   console.log(`🚫 Rejected (Low): ${rejectedCount}/10 (should be 10)`);
@@ -257,16 +257,12 @@ main().catch(console.error);
 export { signAndSend, runAllInteractions };
 
 /*
-WALLET-1 TEST CONFIGURATION:
+WALLET-2 TEST CONFIGURATION:
 - Dynamic Wallets: Each transaction uses a randomly generated wallet
 - Cooldown Bypass: Fresh wallets have no cooldown restrictions
 - Test Plan: 10 High + 10 Medium + 10 Low significance interactions
-- Expected Behavior:
-  * HIGH (>6.0): Should be ACCEPTED - detailed technical content
-  * MEDIUM (3.0-5.9): Should be ACCEPTED - quality contributions  
-  * LOW (<0.1): Should be REJECTED - minimal interactions
-- Progressive delays: 2s (high) -> 1.8s (medium) -> 1.5s (low)
-- Comprehensive tracking of expected vs actual behavior
-- Retry logic for nonce conflicts with exponential backoff
+- Different interaction sets from wallet1 for variety
+- Progressive delays: 1.6s (high) -> 1.3s (medium) -> 1.1s (low)
+- Comprehensive success/failure tracking and reporting
 - Random wallet generation eliminates cooldown-related failures
 */

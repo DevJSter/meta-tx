@@ -391,41 +391,39 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Ethers.js**: For seamless blockchain interactions
 
 ---
-
+<!-- 
 **Built with love for the decentralized social future**
 
 For support and questions, please open an issue or reach out to the development team.
 
 
 the contracts are deployed tho 
-
-<!-- 
-PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 forge script script/Dep
-loyAll.s.sol --via-ir --broadcast --rpc-url https://subnets.avax.network/thane/testnet/rpc
+contracts % PRIVATE_KEY=0x0c66d49033974db79272c6298e6c9c67cbff74b78658d2332277cf4147e66250 forge script script/Deplo
+yAll.s.sol --rpc-url https://subnets.avax.network/thane/testnet/rpc --broadcast
 [⠊] Compiling...
 No files changed, compilation skipped
 Script ran successfully.
 
 == Logs ==
   === Starting Deployment ===
-  Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  Deployer: 0x1cd0319241dd746817946EFbF3Ae51C7706470cA
   Chain ID: 202102
-  MetaTxInteraction deployed at: 0x59b670e9fA9D0A427751Af201D676719a970857b
-  QobitToken deployed at: 0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1
+  MetaTxInteraction deployed at: 0x734F4801C1cbeF49F2A0fC166fad2F7fC9BC507C
+  QobitToken deployed at: 0x5f2426107ad1D04D04d004BfdB9cBf0F4F4a93e3
   === Verification ===
-  MetaTx minting contract: 0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1
-  QobitToken meta contract: 0x59b670e9fA9D0A427751Af201D676719a970857b
-  Authorized relayer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  MetaTx minting contract: 0x5f2426107ad1D04D04d004BfdB9cBf0F4F4a93e3
+  QobitToken meta contract: 0x734F4801C1cbeF49F2A0fC166fad2F7fC9BC507C
+  Authorized relayer: 0x1cd0319241dd746817946EFbF3Ae51C7706470cA
   QobitToken total supply: 1000000 tokens
   QobitToken deployer balance: 1000000 tokens
   === Configured Interaction Types ===
-  like_post: base=10 cooldown=300 active=true
-  create_post: base=100 cooldown=3600 active=true
+  like_post: base=10 cooldown=0 active=true
+  create_post: base=100 cooldown=0 active=true
   === Deployment Summary ===
-  MetaTx Contract: 0x59b670e9fA9D0A427751Af201D676719a970857b
-  Qobit Token: 0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1
-  Relayer Address: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-  Domain Separator: 0x1d5d2fb96337ed8d227e163e5f59f69badfa4566f2a62de77c330aaa4755d219
+  MetaTx Contract: 0x734F4801C1cbeF49F2A0fC166fad2F7fC9BC507C
+  Qobit Token: 0x5f2426107ad1D04D04d004BfdB9cBf0F4F4a93e3
+  Relayer Address: 0x1cd0319241dd746817946EFbF3Ae51C7706470cA
+  Domain Separator: 0xb40627a0a1d7a38dee11eaa7bccc3b389faca862a2d2d023b9d3d0c13192a513
   Ready for AI relayer service!
   =========================
 
@@ -437,45 +435,46 @@ Chain 202102
 
 Estimated gas price: 50.000000001 gwei
 
-Estimated total gas used for script: 4427747
+Estimated total gas used for script: 4249459
 
-Estimated amount required: 0.221387350004427747 ETH
+Estimated amount required: 0.212472950004249459 ETH
 
 ==========================
 
 ##### 202102
-✅  [Success] Hash: 0x24a0c4087dad2f6296d4b457e9ac87ac0733b11311e16b939a60399977366c04
-Contract Address: 0x59b670e9fA9D0A427751Af201D676719a970857b
-Block: 56
-Paid: 0.037773225001510929 ETH (1510929 gas * 25.000000001 gwei)
+✅  [Success] Hash: 0x47ad94c1ceaa418c9fc0bee0b8db2fc8219ae97b8c23ad9821493ab8dc88fddb
+Contract Address: 0x734F4801C1cbeF49F2A0fC166fad2F7fC9BC507C
+Block: 103
+Paid: 0.034269275001370771 ETH (1370771 gas * 25.000000001 gwei)
 
 
 ##### 202102
-✅  [Success] Hash: 0x6dce89511f0af29e0b9595f0a8c4914dbb54010c4fa81c13af50867900e2f6f9
-Block: 57
-Paid: 0.001186850000047474 ETH (47474 gas * 25.000000001 gwei)
-
-
-##### 202102
-✅  [Success] Hash: 0x26801b4178f58f14fe6597dbcb4fc21ce41c69e09adf19dcf5239218e84cc845
-Block: 57
-Paid: 0.001195100000047804 ETH (47804 gas * 25.000000001 gwei)
-
-
-##### 202102
-✅  [Success] Hash: 0x755b7d55c6c1b1a5952a974d5dd45bce69f8746a13e073f458a8127d003cc7de
-Block: 57
+✅  [Success] Hash: 0xa2c4263bfa6e87c3508e0ec0664e773392e4d65c2454f5f65fe696b8e3a4e01a
+Block: 104
 Paid: 0.001759450000070378 ETH (70378 gas * 25.000000001 gwei)
 
 
 ##### 202102
-✅  [Success] Hash: 0xb94257ab63ec1e4e7e751da3810613670ec5629f1ea98030b830e7bece6afdea
-Contract Address: 0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1
-Block: 57
+✅  [Success] Hash: 0x5942143e3ae41922d4646f0e96f260b0364741cd30d54f0d80462da3d43a4912
+Contract Address: 0x5f2426107ad1D04D04d004BfdB9cBf0F4F4a93e3
+Block: 104
 Paid: 0.042791450001711658 ETH (1711658 gas * 25.000000001 gwei)
 
-✅ Sequence #1 on 202102 | Total Paid: 0.084706075003388243 ETH (3388243 gas * avg 25.000000001 gwei)
-                                                                                                                                             
+
+##### 202102
+✅  [Success] Hash: 0xd0a69a1384a124af0ede0a639636e0762a5004969f3db91ba82d355c420371c4
+Block: 104
+Paid: 0.001195650000047826 ETH (47826 gas * 25.000000001 gwei)
+
+
+##### 202102
+✅  [Success] Hash: 0x5fb42b2b510bfe629f4f91e701e83e4c44307a784b4c4adcbd369ef71b44e0d9
+Block: 104
+Paid: 0.001186850000047474 ETH (47474 gas * 25.000000001 gwei)
+
+✅ Sequence #1 on 202102 | Total Paid: 0.081202675003248107 ETH (3248107 gas * avg 25.000000001 gwei)
+                                                                                                                                               
+
 ==========================
 
 ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
@@ -484,8 +483,4 @@ Transactions saved to: /Users/qoneqt/Desktop/shubham/ava-chain/new-ai-validator/
 
 Sensitive values saved to: /Users/qoneqt/Desktop/shubham/ava-chain/new-ai-validator/EIP712/contracts/cache/DeployAll.s.sol/202102/run-latest.json
 
-
-now run the projects -->
-<!-- 
-from the whole project remove all the emojis instead use normal simple non ai looking checks 
- -->
+qoneqt@Qoneqts-MacBook-Pro contracts %  -->

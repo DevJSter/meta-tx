@@ -37,7 +37,7 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
 
     struct InteractionType {
         uint256 basePoints;
-        uint256 cooldownPeriod;
+        uint256 cooldownPeriod; // Keep the field for compatibility but set to 0
         bool isActive;
     }
 
@@ -50,7 +50,7 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
     mapping(address => uint256) public nonces;
     mapping(address => UserStats) public userStats;
     mapping(string => InteractionType) public interactionTypes;
-    mapping(address => mapping(string => uint256)) public lastInteractionTime;
+    mapping(address => mapping(string => uint256)) public lastInteractionTime; // Keep for compatibility
 
     bytes32 public DOMAIN_SEPARATOR;
     address public authorizedRelayer;
@@ -73,13 +73,13 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
             )
         );
 
-        // Initialize common interaction types
-        _addInteractionType("like_post", 10, 300); // 5 min cooldown
-        _addInteractionType("comment_post", 25, 600); // 10 min cooldown
-        _addInteractionType("share_post", 50, 1800); // 30 min cooldown
-        _addInteractionType("create_post", 100, 3600); // 1 hour cooldown
-        _addInteractionType("follow_user", 30, 1800); // 30 min cooldown
-        _addInteractionType("join_community", 75, 7200); // 2 hour cooldown
+        // Initialize common interaction types with NO COOLDOWNS (cooldownPeriod = 0)
+        _addInteractionType("like_post", 10, 0); // No cooldown
+        _addInteractionType("comment_post", 25, 0); // No cooldown
+        _addInteractionType("share_post", 50, 0); // No cooldown
+        _addInteractionType("create_post", 100, 0); // No cooldown
+        _addInteractionType("follow_user", 30, 0); // No cooldown
+        _addInteractionType("join_community", 75, 0); // No cooldown
     }
 
     function setAuthorizedRelayer(address _relayer) external onlyOwner {
@@ -129,17 +129,18 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
         address recovered = digest.recover(signature);
         require(recovered == user, "Invalid signature");
 
-        // Extract interaction type and check cooldown
+        // Extract interaction type - NO COOLDOWN CHECK ANYMORE!
         string memory interactionType = _extractInteractionType(interaction);
-        InteractionType memory iType = interactionTypes[interactionType];
 
-        if (iType.isActive && iType.cooldownPeriod > 0) {
-            require(
-                block.timestamp >= lastInteractionTime[user][interactionType] + iType.cooldownPeriod,
-                "Interaction on cooldown"
-            );
-            lastInteractionTime[user][interactionType] = block.timestamp;
-        }
+        // COOLDOWN LOGIC COMPLETELY REMOVED!
+        // Previous logic that caused issues:
+        // if (iType.isActive && iType.cooldownPeriod > 0) {
+        //     require(
+        //         block.timestamp >= lastInteractionTime[user][interactionType] + iType.cooldownPeriod,
+        //         "Interaction on cooldown"
+        //     );
+        //     lastInteractionTime[user][interactionType] = block.timestamp;
+        // }
 
         // Calculate and store final score, update stats in one operation
         uint256 finalScore = _calculateScore(interactionType, significance);
@@ -237,19 +238,8 @@ contract MetaTxInteraction is Ownable, ReentrancyGuard {
         return userStats[user].interactionCounts[interactionType];
     }
 
-    function getInteractionCooldown(address user, string memory interactionType) external view returns (uint256) {
-        InteractionType memory iType = interactionTypes[interactionType];
-        if (!iType.isActive || iType.cooldownPeriod == 0) {
-            return 0;
-        }
-
-        uint256 lastTime = lastInteractionTime[user][interactionType];
-        uint256 nextAllowed = lastTime + iType.cooldownPeriod;
-
-        if (block.timestamp >= nextAllowed) {
-            return 0;
-        }
-
-        return nextAllowed - block.timestamp;
+    function getInteractionCooldown(address /* user */, string memory /* interactionType */) external pure returns (uint256) {
+        // ALWAYS RETURN 0 - NO COOLDOWNS!
+        return 0;
     }
 }

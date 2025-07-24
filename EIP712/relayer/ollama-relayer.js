@@ -155,59 +155,41 @@ async function validateWithAI(interaction, userAddress, userHistory = null) {
     }
 
     const prompt = `
-You are an advanced AI content moderator for a decentralized social media platform that rewards positive interactions with tokens.
+You are an EXTREMELY STRICT AI content moderator for a blockchain platform. You MUST be very conservative to prevent spam transactions on the blockchain explorer.
 
-CRITICAL: Only HIGH confidence interactions should reach the blockchain to prevent failed transactions.
+CRITICAL: Only assign "high" confidence to interactions that are clearly valuable, detailed, and meaningful. Be VERY strict - most interactions should get "medium" or "low" confidence.
 
-Analyze this user interaction and provide:
-1. Safety assessment (approve/reject)
-2. Significance score (0.1 to 10.0) - higher for more valuable social contributions
-3. Detailed reasoning
+Analyze this interaction: "${interaction}"
+User: ${userAddress}${contextInfo}
 
-Interaction: "${interaction}"
-User Address: ${userAddress}${contextInfo}
+CONFIDENCE LEVELS (ULTRA-STRICT):
+- HIGH: Only for exceptionally detailed, technical, educational content that clearly adds significant value
+  * Must be specific, detailed, and professional
+  * Must demonstrate clear community value
+  * Examples: "create_post-comprehensive_smart_contract_security_audit_guide_with_detailed_vulnerability_analysis"
+  
+- MEDIUM: Decent quality but not exceptional
+  * Good but not outstanding content
+  * Examples: "comment_post-thanks_for_the_detailed_analysis_this_helps_understand_defi_risks"
+  
+- LOW: Everything else (will be BLOCKED from blockchain)
+  * Simple interactions, unclear content, generic responses
+  * Examples: "like_post", "good", "nice", "thanks", short responses
 
-CONFIDENCE CRITERIA (VERY STRICT):
-- HIGH: Clear, meaningful, specific interactions that obviously add value
-- MEDIUM: Decent interactions but lacking specificity or unclear value
-- LOW: Vague, generic, unclear, or potentially spam interactions
+SCORING (CONSERVATIVE):
+- 8.0-10.0: Exceptional educational/technical content only
+- 6.0-7.9: High-quality detailed contributions  
+- 3.0-5.9: Good but not exceptional content
+- 1.0-2.9: Basic interactions
+- 0.1-0.9: Spam/low-effort (reject)
 
-SCORING GUIDELINES:
-- Basic interactions (likes, simple reactions): 0.5-2.0
-- Quality comments, shares: 2.0-5.0  
-- Original content creation: 4.0-8.0
-- Community building, educational content: 6.0-10.0
-- Spam, low-effort, harmful content: 0.1-0.5 (reject)
+BE EXTREMELY CONSERVATIVE: When in doubt, assign MEDIUM or LOW confidence. Only HIGH confidence reaches blockchain.
 
-EXAMPLES OF CONFIDENCE LEVELS:
-HIGH confidence:
-- "create_post-comprehensive_guide_to_smart_contract_security"
-- "comment-excellent_analysis_of_defi_risks_thanks_for_detailed_breakdown"
-- "share_research-blockchain_scalability_solutions_2024_report"
-
-MEDIUM confidence:
-- "comment-interesting_post_thanks"
-- "like_good_content"
-- "follow_blockchain_expert"
-
-LOW confidence (WILL BE REJECTED):
-- "like_post"
-- "good"
-- "nice"
-- "test"
-- Generic or unclear interactions
-
-Consider:
-- Specificity and detail level
-- Clear value proposition
-- Professional/meaningful language
-- Authentic human interaction vs automated/spam
-
-Respond in this EXACT format:
+Respond EXACTLY:
 DECISION: [approve/reject]
 SIGNIFICANCE: [0.1-10.0]
-CATEGORY: [social_basic/content_creation/community_building/spam/harmful]
-REASON: [detailed explanation of scoring rationale]
+CATEGORY: [category]
+REASON: [detailed rationale]
 CONFIDENCE: [low/medium/high]
 `;
 
@@ -290,41 +272,41 @@ CONFIDENCE: [low/medium/high]
   }
 }
 
-// Enhanced fallback validation with pattern recognition (CONSERVATIVE)
+// Enhanced fallback validation with pattern recognition (ULTRA-CONSERVATIVE)
 function enhancedFallbackValidation(interaction, userAddress) {
-  console.log('🔄 Using enhanced fallback validation (conservative mode)...');
+  console.log('🔄 Using ultra-conservative fallback validation - will block blockchain access...');
   
   const interactionLower = interaction.toLowerCase();
   
   // Use centralized interaction patterns
   const patterns = interactions.patterns;
 
-  // Check patterns - BUT be more conservative with confidence
+  // Check patterns - BUT be EXTREMELY conservative with confidence
   for (const [category, config] of Object.entries(patterns)) {
     for (const pattern of config.patterns) {
       if (interactionLower.includes(pattern)) {
         const scaledScore = helpers.getScaledSignificance(config.baseScore);
         return {
-          approved: config.approved && config.baseScore >= 2.0, // Only approve if score is decent
+          approved: false, // ALWAYS reject in fallback to prevent blockchain spam
           significance: scaledScore,
           originalSignificance: config.baseScore,
           category: category,
-          reason: `Fallback: Matched ${category} pattern "${pattern}" - conservative approval`,
-          confidence: 'low', // Always low confidence for fallback
+          reason: `Fallback validation: Pattern "${pattern}" detected but blocked from blockchain (use AI for approval)`,
+          confidence: 'low', // ALWAYS low confidence in fallback
           fallback: true
         };
       }
     }
   }
 
-  // Default for unrecognized patterns - ALWAYS LOW CONFIDENCE
+  // Default for unrecognized patterns - ALWAYS BLOCK
   return {
     approved: false,
     significance: helpers.getScaledSignificance(validation.minSignificance),
     originalSignificance: validation.minSignificance,
     category: 'unknown',
-    reason: 'Fallback: Unrecognized interaction pattern - please provide more descriptive interaction',
-    confidence: 'low',
+    reason: 'Fallback validation: Unrecognized pattern - AI validation required for blockchain access',
+    confidence: 'low', // ALWAYS low confidence
     fallback: true
   };
 }
@@ -506,6 +488,75 @@ app.post('/relayMetaTx', async (req, res) => {
     });
   }
 
+  // EARLY COOLDOWN CHECK - Stop transactions before AI validation to prevent blockchain spam
+  console.log('🔍 Checking interaction cooldown periods...');
+  try {
+    // Get user's last interaction time for the interaction type
+    const interactionType = interaction.split('-')[0] || 'unknown'; // Extract type like 'create_post', 'comment_post', etc.
+    
+    // Use direct contract call to check last interaction time
+    const lastInteractionData = contract.interface.encodeFunctionData('lastInteractionTime', [user, interactionType]);
+    const lastInteractionResult = await provider.call({
+      to: ethers.getAddress(blockchain.contractAddress),
+      data: lastInteractionData
+    });
+    const lastInteractionTimestamp = contract.interface.decodeFunctionResult('lastInteractionTime', lastInteractionResult)[0];
+    
+    // Get current timestamp
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const timeSinceLastInteraction = currentTimestamp - parseInt(lastInteractionTimestamp.toString());
+    
+    console.log(`📊 Cooldown check for "${interactionType}":`);
+    console.log(`  Last interaction: ${lastInteractionTimestamp.toString()} (${lastInteractionTimestamp.toString() === '0' ? 'Never' : new Date(parseInt(lastInteractionTimestamp.toString()) * 1000).toISOString()})`);
+    console.log(`  Time since last: ${timeSinceLastInteraction} seconds`);
+    
+    // Define cooldown periods (in seconds) based on interaction type - these should match contract values
+    const cooldownPeriods = {
+      'create_post': 3600,     // 1 hour
+      'write_article': 3600,   // 1 hour  
+      'comment_post': 600,     // 10 minutes
+      'share_post': 1800,      // 30 minutes
+      'join_community': 1800,  // 30 minutes
+      'follow_user': 1800,     // 30 minutes
+      'like_post': 300,        // 5 minutes
+      'react_post': 300,       // 5 minutes
+      'bookmark_post': 300,    // 5 minutes
+      'vote_poll': 600,        // 10 minutes
+      'default': 300           // 5 minutes for unknown types
+    };
+    
+    const requiredCooldown = cooldownPeriods[interactionType] || cooldownPeriods['default'];
+    
+    if (lastInteractionTimestamp.toString() !== '0' && timeSinceLastInteraction < requiredCooldown) {
+      const remainingCooldown = requiredCooldown - timeSinceLastInteraction;
+      const remainingMinutes = Math.ceil(remainingCooldown / 60);
+      
+      console.log(`🚫 BLOCKED: Interaction "${interactionType}" is on cooldown`);
+      console.log(`  Required cooldown: ${requiredCooldown} seconds (${Math.ceil(requiredCooldown / 60)} minutes)`);
+      console.log(`  Remaining cooldown: ${remainingCooldown} seconds (${remainingMinutes} minutes)`);
+      
+      return res.status(400).json({ 
+        error: 'Interaction type is on cooldown',
+        interactionType: interactionType,
+        requiredCooldownSeconds: requiredCooldown,
+        requiredCooldownMinutes: Math.ceil(requiredCooldown / 60),
+        remainingCooldownSeconds: remainingCooldown,
+        remainingCooldownMinutes: remainingMinutes,
+        lastInteractionTime: lastInteractionTimestamp.toString() === '0' ? null : new Date(parseInt(lastInteractionTimestamp.toString()) * 1000).toISOString(),
+        canRetryAt: new Date((currentTimestamp + remainingCooldown) * 1000).toISOString(),
+        suggestion: `Please wait ${remainingMinutes} minute(s) before submitting another "${interactionType}" interaction`,
+        note: 'Cooldown periods prevent spam and ensure quality interactions on the blockchain'
+      });
+    }
+    
+    console.log(`✅ Cooldown check passed for "${interactionType}" - proceeding with AI validation`);
+    
+  } catch (cooldownError) {
+    console.error('❌ Error checking cooldown:', cooldownError);
+    // Don't fail the transaction for cooldown check errors, but log it
+    console.log('⚠️  Cooldown check failed - proceeding with AI validation (may fail later)');
+  }
+
   // Get user history for context-aware validation
   const userHistory = await getUserHistory(user);
 
@@ -525,42 +576,43 @@ app.post('/relayMetaTx', async (req, res) => {
 
   console.log('🎯 Validation result:', validationResult);
 
-  // Check if interaction is approved
-  if (!validationResult.approved) {
-    console.log('❌ Interaction rejected by AI validation');
-    return res.status(400).json({ 
-      error: 'Interaction rejected by AI validation',
-      reason: validationResult.reason,
-      category: validationResult.category,
-      significance: validationResult.originalSignificance,
-      confidence: validationResult.confidence
-    });
-  }
-
-  // STRICT: Always reject low confidence transactions to prevent failed transactions on blockchain
+  // CRITICAL: Immediately reject ANY transaction with low confidence to prevent blockchain spam
   if (validationResult.confidence === 'low') {
-    console.log('❌ Interaction rejected due to low AI confidence - preventing blockchain spam');
+    console.log('🚫 BLOCKED: Low confidence interaction - preventing blockchain spam');
     return res.status(400).json({ 
-      error: 'Interaction rejected due to low AI confidence',
+      error: 'Transaction blocked due to low AI confidence',
       reason: validationResult.reason,
       category: validationResult.category,
       significance: validationResult.originalSignificance,
       confidence: validationResult.confidence,
-      suggestion: 'Please provide a clearer, more detailed, and meaningful interaction description',
-      note: 'Low confidence transactions are blocked to prevent failed transactions on the blockchain explorer'
+      suggestion: 'Provide a more detailed, specific, and meaningful interaction description',
+      note: 'Low confidence transactions are strictly blocked to keep the blockchain explorer clean'
     });
   }
 
-  // Additional check: Only allow high confidence transactions for contract execution
+  // CRITICAL: Only HIGH confidence transactions are allowed to reach blockchain
   if (validationResult.confidence !== 'high') {
-    console.log('❌ Interaction requires high confidence for blockchain execution');
+    console.log('🚫 BLOCKED: Only high confidence interactions allowed on blockchain');
     return res.status(400).json({ 
       error: 'Only high confidence interactions are allowed for blockchain execution',
       reason: validationResult.reason,
       category: validationResult.category,
       significance: validationResult.originalSignificance,
       confidence: validationResult.confidence,
-      suggestion: 'Please provide a more specific and meaningful interaction that clearly demonstrates value to the community'
+      suggestion: 'Make your interaction more specific and clearly demonstrate value to the community',
+      note: 'Medium and low confidence transactions are blocked to prevent failed transactions'
+    });
+  }
+
+  // Check if interaction is approved (after confidence check)
+  if (!validationResult.approved) {
+    console.log('🚫 BLOCKED: Interaction rejected by AI validation');
+    return res.status(400).json({ 
+      error: 'Interaction rejected by AI validation',
+      reason: validationResult.reason,
+      category: validationResult.category,
+      significance: validationResult.originalSignificance,
+      confidence: validationResult.confidence
     });
   }
 
