@@ -43,7 +43,7 @@ contract DeployAllScript is Script {
         console.log("=== Configured Interaction Types ===");
         (uint256 basePoints, uint256 cooldown, bool isActive) = metaTxContract.interactionTypes("like_post");
         console.log("like_post: base=%d cooldown=%d active=%s", basePoints, cooldown, isActive ? "true" : "false");
-        
+
         (basePoints, cooldown, isActive) = metaTxContract.interactionTypes("create_post");
         console.log("create_post: base=%d cooldown=%d active=%s", basePoints, cooldown, isActive ? "true" : "false");
 
