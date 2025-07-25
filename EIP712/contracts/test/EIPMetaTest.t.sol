@@ -316,14 +316,14 @@ contract MetaTxInteractionTest is Test {
     }
 
     function testCooldownPeriod() public {
-        // Debug: Let's check if create_post interaction type is properly configured
+        // Test that cooldowns are DISABLED (cooldownPeriod should be 0)
         (uint256 basePoints, uint256 cooldownPeriod, bool isActive) = metaTx.interactionTypes("create_post");
         assertEq(basePoints, 100);
-        assertEq(cooldownPeriod, 3600);
+        assertEq(cooldownPeriod, 0); // NO COOLDOWN!
         assertTrue(isActive);
 
         // Set a realistic timestamp
-        vm.warp(1000000); // Set block.timestamp to a large value
+        vm.warp(1000000);
 
         string memory interaction1 = "create_post-cooldown-test1";
         string memory interaction2 = "create_post-cooldown-test2";
@@ -344,8 +344,8 @@ contract MetaTxInteractionTest is Test {
         vm.prank(relayer);
         metaTx.executeMetaTx(user, interaction1, nonce, TEST_SIGNIFICANCE, signature1);
 
-        // Try same interaction type immediately with different nonce and interaction name
-        // but same type (both extract to "create_post")
+        // Try same interaction type IMMEDIATELY with different nonce and interaction name
+        // This should NOW SUCCEED because there are no cooldowns!
         nonce = 1;
 
         bytes32 digest2 = keccak256(
@@ -359,16 +359,16 @@ contract MetaTxInteractionTest is Test {
         (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(userPrivateKey, digest2);
         bytes memory signature2 = abi.encodePacked(r2, s2, v2);
 
-        vm.expectRevert("Interaction on cooldown");
+        // This should NOW SUCCEED - no more "Interaction on cooldown" error!
         vm.prank(relayer);
         metaTx.executeMetaTx(user, interaction2, nonce, TEST_SIGNIFICANCE, signature2);
 
-        // Fast forward time beyond cooldown period (1 hour for create_post)
-        vm.warp(block.timestamp + 3601);
-        vm.prank(relayer);
-        metaTx.executeMetaTx(user, interaction2, nonce, TEST_SIGNIFICANCE, signature2);
-
+        // Both transactions should have succeeded
         assertEq(metaTx.nonces(user), 2);
+        
+        // Verify no cooldown exists
+        uint256 remainingCooldown = metaTx.getInteractionCooldown(user, "create_post");
+        assertEq(remainingCooldown, 0);
     }
 
     function testUserStatsTracking() public {

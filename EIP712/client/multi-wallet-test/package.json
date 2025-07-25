@@ -1,0 +1,39 @@
+{
+  "name": "multi-wallet-ai-validator-test",
+  "version": "1.0.0",
+  "description": "Multi-wallet testing suite for AI-validated blockchain interactions",
+  "type": "module",
+  "main": "run-all.js",
+  "scripts": {
+    "test": "node run-all.js",
+    "test:sequential": "node run-all.js sequential",
+    "test:concurrent": "node run-all.js concurrent",
+    "test:parallel": "node run-all.js parallel",
+    "wallet1": "node wallet1.js",
+    "wallet2": "node wallet2.js",
+    "wallet3": "node wallet3.js",
+    "start": "node run-all.js"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "eip712",
+    "meta-transactions",
+    "ai-validation",
+    "testing",
+    "multi-wallet"
+  ],
+  "author": "AI Validator Team",
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.8.0",
+    "axios": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-repo/ai-validator"
+  }
+}

@@ -83,7 +83,7 @@ const config = {
 
   // AI Validation Configuration
   validation: {
-    significanceThreshold: parseFloat(process.env.SIGNIFICANCE_THRESHOLD) || 0.1,
+    significanceThreshold: parseFloat(process.env.SIGNIFICANCE_THRESHOLD) || 0.5,
     maxSignificance: 10.0,
     minSignificance: 0.1,
     rejectLowConfidence: process.env.REJECT_LOW_CONFIDENCE !== 'false',
