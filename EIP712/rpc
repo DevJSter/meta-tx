@@ -1,0 +1,1 @@
+export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 && forge script script/DeployAll.s.sol --rpc-url "https://testnet-thane-x1c45.avax-test.network/ext/bc/uxgnTWCAZL5YynugMd5NqkXSZpk34ZY2c8284379LWPKNAyk1/rpc?token=f687ad8ba03fe265b06413b6810dcdbb85502c32f65cfe9671cf3e5f93ecc2d1" --broadcast
