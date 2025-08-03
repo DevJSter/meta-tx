@@ -5,8 +5,9 @@ pragma solidity ^0.8.26;
  * @title IncrementalMerkleTree
  * @dev Implementation of an incremental Merkle tree that allows dynamic updates
  * Key features:
+ * - There should be 6 trees for different interaction Types 
  * - Add new leaves incrementally
- * - Update root dynamically
+ * - Update roots dynamically
  * - Efficient storage using sparse representation
  * - Support for both append-only and arbitrary position updates
  */
