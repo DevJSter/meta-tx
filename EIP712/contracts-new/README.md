@@ -56,6 +56,35 @@ QOBI (Quality-Optimized Blockchain Interface) is a comprehensive social mining p
 | 4 | CRYPTO | 9.95 QOBI | Crypto-related content |
 | 5 | REFERRALS | 11.95 QOBI | Referral activities |
 
+## 🎯 Viewing Spam Test Addresses
+
+To see the 500,000 addresses created during the successful spam test:
+
+```bash
+cd relayer-system
+node simple-viewer.js
+```
+
+This will show:
+- Sample addresses with private keys
+- QOBI amounts each address can claim
+- Claiming instructions for users
+- Contract addresses and network info
+
+**Example Output:**
+```
+📋 Showing first 10 addresses from your spam test:
+ 1: 0x33D748F1fFeB05B51470a5D9A45F8530c4681140
+    🔐 Private Key: 0x1cd12ba89c97a9f41043186d383840058b85045d8f66218fee0a79a80fcd68da
+    📅 Day 1 | CREATE | 79 pts = 1.1771 QOBI
+
+💡 HOW TO CLAIM YOUR QOBI TOKENS:
+1. Import any private key into MetaMask
+2. Connect to Avalanche testnet
+3. Go to QOBIMerkleDistributor: 0x9e30Ef6651338A20e9E795e60bE08946c7FcAeBA
+4. Call claimQOBI(day, interactionType, points, qobiAmount, merkleProof)
+```
+
 ## 🚀 Quick Start
 
 ### Prerequisites
