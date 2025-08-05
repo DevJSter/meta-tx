@@ -149,7 +149,10 @@ Crypto Interactions5
 Referrals6
 }
 
+
+```
 There would be two contracts -
    - 1 MerkleTree --> A simple merkle tree implementation w/ depth 2^20
    - 2 MerkleGeneratorVerifier --> would have 6 instances for each interactions mapped with block.timestamp in which each 24 hours validated addresses would be pushed to create a merkle root hash and would have three main functions like generate , verify, participation view function 
    - 3 each and everyday new merkle tree for each type of interaction would be generated and which can be viewed using a event emitted naming block.timestamp , merkle root hash
+- ````

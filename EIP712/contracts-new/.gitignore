@@ -12,3 +12,8 @@ docs/
 
 # Dotenv file
 .env
+
+
+# idea and implementation notes
+idea.md
+implementation.md
