@@ -1,30 +1,31 @@
 {
   "name": "qobi-relayer-system",
   "version": "1.0.0",
-  "description": "QOBI Social Mining Off-Chain Relayer System with AI Validation",
+  "description": "Relayer system for QOBI (Quantum Oracle Blockchain Intelligence) with AI validation",
   "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "ai-validator": "node src/ai-validator.js",
-    "relayer": "node src/relayer.js",
-    "test": "node src/test-system.js",
-    "demo": "node src/demo.js",
+    "start": "node demo-server.js",
+    "dev": "node --watch demo-server.js",
+    "test": "node test-integration.js",
+    "scanner": "node event-scanner.js",
+    "viewer": "node simple-viewer.js",
+    "dashboard": "node qobi-dashboard.js",
+    "cli": "node cli.js",
     "merkle-demo": "node merkle-demo.js",
-    "test-config": "node test-config.js"
+    "spam-test": "node spam-analyzer.js"
   },
   "dependencies": {
-    "ethers": "^6.8.0",
+    "ethers": "^6.7.1",
     "dotenv": "^16.3.1",
-    "axios": "^1.5.0",
-    "crypto": "^1.0.1",
-    "merkletreejs": "^0.3.10",
-    "keccak": "^3.0.3",
     "express": "^4.18.2",
     "cors": "^2.8.5",
+    "commander": "^11.0.0",
+    "chalk": "^4.1.2",
+    "inquirer": "^8.2.6",
+    "axios": "^1.5.0",
     "winston": "^3.10.0",
-    "cron": "^3.1.6",
-    "node-cron": "^3.0.2"
+    "merkletreejs": "^0.3.11",
+    "keccak": "^3.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
@@ -32,12 +33,10 @@
   "keywords": [
     "blockchain",
     "ethereum",
-    "qobi",
-    "social-mining",
-    "ai",
     "relayer",
-    "eip712",
-    "merkle-tree"
+    "merkle-tree",
+    "ai-validation",
+    "quantum-oracle"
   ],
   "author": "QOBI Team",
   "license": "MIT"

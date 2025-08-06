@@ -1,249 +1,328 @@
 # QOBI Relayer System
 
-JavaScript off-chain system for the QOBI social mining platform with AI-powered validation using Ollama.
+**Quantum Oracle Blockchain Intelligence - Advanced Relayer with AI Validation**
 
-## 🏗️ Architecture
+A sophisticated blockchain relayer system that integrates AI-powered transaction validation, EIP-712 signing, and Merkle tree batching for secure and efficient transaction processing.
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   AI Validator  │    │ Relayer Service │    │   Blockchain    │
-│  (Ollama LLM)   │────│  (JavaScript)   │────│  (Solidity)     │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-    Validates social        Builds Merkle           Stores daily
-    interactions &          trees & submits         trees & enables
-    calculates QOBI         EIP712 signatures       user claims
-```
+## 🌟 Features
 
-## 📋 Components
-
-### 🤖 AI Validator (`src/ai-validator.js`)
-- Uses Ollama to validate social interactions
-- Calculates QOBI rewards based on content quality
-- Supports 6 interaction types: CREATE, LIKES, COMMENTS, TIPPING, CRYPTO, REFERRALS
-- Fallback scoring when AI is unavailable
-
-### ⚡ Relayer Service (`src/relayer-service.js`)
-- Automated daily tree processing
-- EIP712 signature generation for secure submission
-- Permission checking and error handling
-- Auto-processing mode with configurable intervals
-
-### 🌳 Merkle Tree Builder (`src/merkle-tree.js`)
-- Off-chain Merkle tree construction
-- Proof generation for gas-efficient claims
-- Keccak256 hashing for Solidity compatibility
-
-### ✍️ EIP712 Signer (`src/eip712-signer.js`)
-- Type-safe off-chain signatures
-- Submission data verification
-- Domain separation for security
+- **AI-Powered Validation**: Real-time transaction analysis using Ollama/LLaMA models
+- **EIP-712 Compliance**: Structured data signing for enhanced security
+- **Merkle Tree Batching**: Efficient transaction grouping with cryptographic proofs
+- **Real-time Monitoring**: Web dashboard for system oversight
+- **CLI Interface**: Command-line tools for system interaction
+- **Event Scanner**: Blockchain event monitoring and analysis
+- **Comprehensive Testing**: Integration tests and demos
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
+- Node.js (v16 or higher)
+- Ollama (for AI validation)
+- Access to Avalanche testnet
+
+### Installation
+
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment**:
+   The `.env` file is already configured with:
+   - Avalanche testnet RPC endpoint
+   - Deployed contract addresses
+   - AI model configuration
+
+3. **Start Ollama** (for AI validation):
+   ```bash
+   # Install Ollama if not already installed
+   # Then pull the model
+   ollama pull llama3.2:latest
+   ```
+
+### Running the System
+
+1. **Start the main relayer server**:
+   ```bash
+   npm start
+   # or
+   node demo-server.js
+   ```
+
+2. **Access the web dashboard**:
+   ```bash
+   node qobi-dashboard.js
+   # Visit http://localhost:3001
+   ```
+
+3. **Use the CLI interface**:
+   ```bash
+   node cli.js --help
+   ```
+
+## 📚 Usage Examples
+
+### Submit a Transaction
+
 ```bash
-# Install Node.js dependencies
-npm install
+# Using CLI
+node cli.js submit --from 0x... --to 0x... --value 0.1
 
-# Start Anvil blockchain
-anvil
-
-# Start Ollama AI service
-ollama serve
-
-# Download AI model (3B parameter model recommended)
-ollama pull llama3.2:3b
+# Using API
+curl -X POST http://localhost:3000/transactions \
+  -H "Content-Type: application/json" \
+  -d '{"from":"0x...","to":"0x...","value":"0.1"}'
 ```
 
-## Environment Configuration
+### Monitor System Status
 
-Check `.env` file has correct deployed contract addresses:
 ```bash
-# Blockchain Configuration
-RPC_URL=http://localhost:8545
-CHAIN_ID=31337
-PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-
-# Contract Addresses (from deployment)
-SYSTEM_DEPLOYER_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
-ACCESS_CONTROL_ADDRESS=0xa16E02E87b7454126E5E10d957A927A7F5B5d2be
-DAILY_TREE_ADDRESS=0xeEBe00Ac0756308ac4AaBfD76c05c4F3088B8883
-MERKLE_DISTRIBUTOR_ADDRESS=0x10C6E9530F1C1AF873a391030a1D9E8ed0630D26
-STABILIZING_CONTRACT_ADDRESS=0xB7A5bd0345EF1Cc5E66bf61BdeC17D2461fBd968
-RELAYER_TREASURY_ADDRESS=0x603E1BD79259EbcbAaeD0c83eeC09cA0B89a5bcC
-
-# AI Configuration  
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2:3b
-
-# System Configuration
-PORT=3000
-PROCESSING_INTERVAL=60
-```
-
-## 🎮 Usage
-
-### 1. Web Demo (Recommended)
-```bash
-npm start
-# Opens http://localhost:3000 with interactive dashboard
-```
-
-### 2. Command Line Interface
-```bash
-# Show system status
+# CLI status
 node cli.js status
 
-# Process daily trees manually
-node cli.js process
-
-# Start auto-processing (every 60 minutes)
-node cli.js auto 60
-
-# Test AI validator
-node cli.js test-ai
-
-# Demo AI validation
-node cli.js validate 0
-
-# Show help
-node cli.js help
+# Web dashboard
+open http://localhost:3001
 ```
 
-### 3. Integration Tests
+### Run Integration Tests
+
 ```bash
 npm test
-# Runs comprehensive system tests
+# or
+node test-integration.js
 ```
 
-## 🔧 API Endpoints
-
-- `GET /api/status` - System status and tree information
-- `POST /api/process` - Trigger daily tree processing
-- `GET /api/ai/test` - Test AI validator connection
-- `POST /api/ai/validate` - Validate sample interactions
-- `GET /api/trees/:day` - Get trees for specific day
-- `GET /api/overview` - System overview and health
-
-## 🎯 Workflow
-
-1. **AI Validation**: Ollama analyzes social interactions and assigns quality scores (0-100 points)
-2. **QOBI Calculation**: Points determine token allocation based on daily caps per interaction type
-3. **Merkle Tree**: Off-chain tree construction with qualified users and amounts
-4. **EIP712 Signature**: Secure signing of submission data
-5. **Blockchain Submission**: Relayer submits tree to DailyTreeGenerator contract
-6. **User Claims**: Users can claim QOBI tokens with Merkle proofs
-
-## 📊 Interaction Types & Daily Caps
-
-| Type | Description | Daily QOBI Cap |
-|------|-------------|---------------|
-| CREATE | Content creation | 1.49 QOBI |
-| LIKES | Social engagement | 0.05 QOBI |
-| COMMENTS | Community interaction | 0.6 QOBI |
-| TIPPING | Peer rewards | 7.96 QOBI |
-| CRYPTO | Blockchain activity | 9.95 QOBI |
-| REFERRALS | Network growth | 11.95 QOBI |
-
-## 🛠️ Development
-
-### File Structure
-```
-relayer-system/
-├── src/
-│   ├── ai-validator.js     # AI validation logic
-│   ├── relayer-service.js  # Main relayer service
-│   ├── merkle-tree.js      # Merkle tree utilities
-│   └── eip712-signer.js    # EIP712 signature handling
-├── demo-server.js          # Web demo server
-├── cli.js                  # Command line interface
-├── test-integration.js     # Integration tests
-├── package.json            # Dependencies
-└── .env                    # Configuration
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**AI Validator Not Working**
-```bash
-# Check Ollama is running
-curl http://localhost:11434/api/tags
-
-# Start Ollama if needed
-ollama serve
-
-# Download model if missing
-ollama pull llama3.2:3b
-```
-
-**Relayer Not Authorized**
-```bash
-# Check relayer permissions
-node cli.js status
-
-# Grant relayer role (run in contracts directory)
-forge script script/DeployQOBISystem.s.sol --rpc-url http://localhost:8545 --broadcast
-```
-
-**Transaction Failures**
-- Check Anvil is running on port 8545
-- Verify contract addresses in `.env`
-- Ensure relayer has ETH for gas fees
-
-## 🎉 Demo Features
-
-- Interactive web dashboard
-- Real-time AI validation
-- Merkle tree visualization
-- Transaction monitoring
-- Auto-refresh status updates
-- One-click tree processing
-
-### 4. Test System
-```bash
-npm run test
-```
-
-## Architecture
-
-### AI Validator (`src/ai-validator.js`)
-- Connects to Ollama for AI-powered interaction validation
-- Processes social interactions (CREATE, LIKES, COMMENTS, etc.)
-- Calculates user points (0-100 scale)
-- Determines QOBI allocations
-
-### Relayer (`src/relayer.js`)
-- Retrieves validated data from AI validator
-- Builds Merkle trees off-chain
-- Creates EIP712 signatures
-- Submits to DailyTreeGenerator contract
+## 🏗️ Architecture
 
 ### Core Components
 
-1. **MerkleTreeBuilder** - Efficient Merkle tree construction
-2. **EIP712Signer** - Type-safe signature creation
-3. **ContractInteractor** - Blockchain communication
-4. **AIValidator** - Ollama-powered validation
-5. **DataProcessor** - Batch processing utilities
+1. **RelayerService** (`src/relayer-service.js`)
+   - Main orchestrator
+   - Batch processing logic
+   - Transaction lifecycle management
 
-## Demo Flow
+2. **AIValidator** (`src/ai-validator.js`)
+   - Ollama integration
+   - Risk assessment
+   - Pattern detection
 
-1. Generate mock social interactions
-2. AI validates and scores interactions
-3. Calculate Merkle trees off-chain
-4. Create EIP712 signatures
-5. Submit to smart contracts
-6. Verify on-chain storage
-7. Test user claiming
+3. **EIP712Signer** (`src/eip712-signer.js`)
+   - Structured data signing
+   - Message verification
+   - Type definitions
 
-## Interaction Types
+4. **QOBIMerkleTree** (`src/merkle-tree.js`)
+   - Batch organization
+   - Proof generation
+   - Tree verification
 
-- **CREATE (0)**: Content creation (1.49 QOBI cap)
-- **LIKES (1)**: Social engagement (0.05 QOBI cap)
-- **COMMENTS (2)**: Community interaction (0.6 QOBI cap)
-- **TIPPING (3)**: Peer rewards (7.96 QOBI cap)
-- **CRYPTO (4)**: Blockchain activity (9.95 QOBI cap)
-- **REFERRALS (5)**: Network growth (11.95 QOBI cap)
+### API Endpoints
+
+- `GET /` - API documentation
+- `GET /status` - System statistics
+- `POST /transactions` - Submit transaction
+- `POST /transactions/:id/relay` - Relay transaction
+- `GET /batches` - Recent batches
+- `GET /merkle/:batchId` - Merkle data
+- `GET /ai/status` - AI validator status
+
+## 🛠️ Available Scripts
+
+```bash
+# Start main server
+npm start
+
+# Development mode with auto-reload
+npm run dev
+
+# Run integration tests
+npm test
+
+# Start event scanner
+npm run scanner
+
+# Start web dashboard
+npm run dashboard
+
+# Start CLI
+npm run cli
+
+# Run Merkle tree demo
+npm run merkle-demo
+
+# Run spam analysis
+npm run spam-test
+```
+
+## 🔧 CLI Commands
+
+```bash
+# Submit transaction
+node cli.js submit
+
+# Check status
+node cli.js status
+
+# Relay transaction
+node cli.js relay <transaction-id>
+
+# View recent batches
+node cli.js batches
+
+# Check AI status
+node cli.js ai-status
+
+# Interactive mode
+node cli.js interactive
+
+# Run demo
+node cli.js demo --count 10
+```
+
+## 📊 Monitoring & Analytics
+
+### Web Dashboard
+
+Visit `http://localhost:3001` for real-time monitoring:
+- System statistics
+- AI validator status
+- Recent transaction batches
+- Merkle tree information
+
+### Event Scanner
+
+Monitor blockchain events:
+
+```bash
+# Generate full report
+node event-scanner.js report
+
+# Verify contract deployments
+node event-scanner.js verify
+
+# Real-time monitoring
+node event-scanner.js monitor
+
+# Scan specific block range
+node event-scanner.js events 1000 2000
+```
+
+## 🧪 Testing
+
+### Integration Test
+
+```bash
+node test-integration.js
+```
+
+Tests include:
+- Service initialization
+- Transaction submission
+- Batch processing
+- AI validation
+- Merkle tree operations
+- Transaction relay
+
+### Merkle Tree Demo
+
+```bash
+node merkle-demo.js
+```
+
+Demonstrates:
+- Tree construction
+- Proof generation
+- Verification
+- Import/export
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Key configurations in `.env`:
+
+```env
+# Blockchain
+RPC_URL=https://testnet-thane-x1c45.avax-test.network/...
+CHAIN_ID=202102
+PRIVATE_KEY=0x...
+
+# Contract Addresses
+SYSTEM_DEPLOYER_ADDRESS=0x30aF35b3021538959FCE5C32882De08e2cb83Fb3
+ACCESS_CONTROL_ADDRESS=0x70D4f9CA8A6F7595fd4Cfd6Be35Be9f90D43bA00
+# ... other contracts
+
+# AI Configuration
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2:latest
+
+# System Settings
+BATCH_SIZE=100
+PROCESSING_INTERVAL=10000
+LOG_LEVEL=info
+```
+
+### AI Model Configuration
+
+The system supports various Ollama models:
+- `llama3.2:latest` (default)
+- `llama3.1:latest`
+- `codellama:latest`
+- Custom models
+
+## 🔐 Security Features
+
+1. **EIP-712 Signing**: Structured data signing prevents replay attacks
+2. **AI Validation**: ML-powered risk assessment
+3. **Merkle Proofs**: Cryptographic verification of batch inclusion
+4. **Access Control**: Role-based permissions
+5. **Rate Limiting**: Protection against spam
+
+## 🚨 Error Handling
+
+The system includes comprehensive error handling:
+- AI service fallbacks
+- Network retry logic
+- Transaction validation
+- Graceful degradation
+
+## 📈 Performance
+
+- **Batch Processing**: Configurable batch sizes
+- **Concurrent Validation**: Parallel AI processing
+- **Memory Efficient**: Streaming and cleanup
+- **Scalable Architecture**: Microservice-ready
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🆘 Support
+
+For issues and questions:
+1. Check the integration test output
+2. Review the dashboard for system status
+3. Use the CLI status command
+4. Check Ollama connection
+
+## 🔮 Roadmap
+
+- [ ] Multi-chain support
+- [ ] Advanced AI models
+- [ ] Gas optimization
+- [ ] Mobile dashboard
+- [ ] GraphQL API
+- [ ] WebSocket real-time updates
+
+---
+
+**Built with ❤️ for the Avalanche ecosystem**

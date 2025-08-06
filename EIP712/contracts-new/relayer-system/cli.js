@@ -1,218 +1,351 @@
 #!/usr/bin/env node
+require('dotenv').config();
+const { Command } = require('commander');
+const chalk = require('chalk');
+const inquirer = require('inquirer');
+const RelayerService = require('./src/relayer-service');
+const { ethers } = require('ethers');
 
-const { RelayerService } = require('./src/relayer-service');
-const { AIValidator } = require('./src/ai-validator');
+const program = new Command();
 
-/**
- * CLI interface for QOBI relayer system
- */
-class RelayerCLI {
-    constructor() {
-        this.relayerService = new RelayerService();
-        this.aiValidator = new AIValidator();
-    }
+program
+  .name('qobi-cli')
+  .description('QOBI Relayer System Command Line Interface')
+  .version('1.0.0');
 
-    async run() {
-        const args = process.argv.slice(2);
-        const command = args[0];
+// Global relayer service instance
+let relayerService;
 
-        try {
-            switch (command) {
-                case 'status':
-                    await this.showStatus();
-                    break;
-                case 'process':
-                    await this.processTrees();
-                    break;
-                case 'auto':
-                    await this.startAutoMode(parseInt(args[1]) || 60);
-                    break;
-                case 'test-ai':
-                    await this.testAI();
-                    break;
-                case 'validate':
-                    await this.validateDemo(parseInt(args[1]) || 0);
-                    break;
-                case 'trees':
-                    await this.showTrees(parseInt(args[1]));
-                    break;
-                case 'help':
-                default:
-                    this.showHelp();
-                    break;
-            }
-        } catch (error) {
-            console.error('❌ Command failed:', error.message);
-            process.exit(1);
-        }
-    }
-
-    async showStatus() {
-        console.log('📊 QOBI Relayer System Status\n');
-        
-        const status = await this.relayerService.getStatus();
-        
-        console.log('🔗 System Information:');
-        console.log(`   Current Day: ${status.currentDay}`);
-        console.log(`   Relayer: ${status.relayerAddress}`);
-        console.log(`   Authorized: ${status.hasPermission ? '✅' : '❌'}`);
-        console.log(`   AI Connected: ${status.aiConnected ? '✅' : '❌'}`);
-        
-        console.log('\n🌳 Daily Trees:');
-        status.trees.forEach(tree => {
-            const icon = tree.submitted ? '✅' : '⏳';
-            console.log(`   ${icon} ${tree.type}: ${tree.userCount} users`);
-        });
-    }
-
-    async processTrees() {
-        console.log('🔄 Processing daily trees...\n');
-        
-        const results = await this.relayerService.processDailyTrees();
-        
-        console.log('\n📊 Processing Results:');
-        let totalUsers = 0;
-        let successCount = 0;
-        
-        results.forEach(result => {
-            const typeName = this.aiValidator.interactionTypes[result.interactionType];
-            const icon = result.success ? '✅' : '❌';
-            console.log(`   ${icon} ${typeName}: ${result.userCount || 0} users`);
-            
-            if (result.success) {
-                successCount++;
-                totalUsers += result.userCount || 0;
-            }
-        });
-        
-        console.log(`\n📈 Summary: ${successCount}/6 trees submitted, ${totalUsers} total users`);
-    }
-
-    async startAutoMode(intervalMinutes) {
-        console.log(`🤖 Starting auto-processing mode (${intervalMinutes} minute intervals)`);
-        console.log('Press Ctrl+C to stop\n');
-        
-        await this.relayerService.startAutoProcessing(intervalMinutes);
-        
-        // Keep process alive
-        process.on('SIGINT', () => {
-            console.log('\n👋 Auto-processing stopped');
-            process.exit(0);
-        });
-    }
-
-    async testAI() {
-        console.log('🤖 Testing AI Validator...\n');
-        
-        const connected = await this.aiValidator.testConnection();
-        
-        if (connected) {
-            console.log('✅ AI validator is working!');
-            console.log(`   Model: ${this.aiValidator.model}`);
-            console.log(`   URL: ${this.aiValidator.ollamaUrl}`);
-        } else {
-            console.log('❌ AI validator not available');
-            console.log('   Make sure Ollama is running: ollama serve');
-        }
-    }
-
-    async validateDemo(interactionType) {
-        const typeName = this.aiValidator.interactionTypes[interactionType];
-        console.log(`🤖 Demo validation for ${typeName} interactions...\n`);
-        
-        // Generate mock interactions
-        const mockInteractions = [];
-        for (let i = 0; i < 15; i++) {
-            mockInteractions.push({
-                user: `0x${Math.random().toString(16).substr(2, 40)}`,
-                content: `Mock ${typeName.toLowerCase()} interaction ${i + 1}`,
-                metadata: { engagement: Math.floor(Math.random() * 100) }
-            });
-        }
-
-        console.log(`📝 Generated ${mockInteractions.length} mock interactions`);
-        
-        const validated = await this.aiValidator.validateInteractions(mockInteractions, interactionType);
-        
-        console.log(`✅ AI validated ${validated.length} interactions:\n`);
-        
-        validated.forEach((user, i) => {
-            const qobiEth = (parseFloat(user.qobiAmount) / 1e18).toFixed(4);
-            console.log(`   ${i + 1}. ${user.user.slice(0, 8)}... | ${user.points} pts | ${qobiEth} QOBI`);
-        });
-        
-        const totalQOBI = validated.reduce((sum, user) => 
-            sum + parseFloat(user.qobiAmount), 0) / 1e18;
-        console.log(`\n💰 Total QOBI allocated: ${totalQOBI.toFixed(4)}`);
-    }
-
-    async showTrees(day) {
-        if (!day) {
-            const status = await this.relayerService.getStatus();
-            day = parseInt(status.currentDay);
-        }
-        
-        console.log(`🌳 Daily Trees for Day ${day}\n`);
-        
-        for (let interactionType = 0; interactionType < 6; interactionType++) {
-            const typeName = this.aiValidator.interactionTypes[interactionType];
-            
-            try {
-                const tree = await this.relayerService.contracts.dailyTree.getDailyTree(day, interactionType);
-                const [merkleRoot, users, amounts, isSubmitted] = tree;
-                
-                console.log(`${isSubmitted ? '✅' : '⏳'} ${typeName}:`);
-                console.log(`   Users: ${users.length}`);
-                console.log(`   Root: ${merkleRoot.slice(0, 10)}...`);
-                
-                if (users.length > 0) {
-                    const totalQOBI = amounts.reduce((sum, amount) => 
-                        sum + parseFloat(amount.toString()), 0) / 1e18;
-                    console.log(`   Total QOBI: ${totalQOBI.toFixed(4)}`);
-                }
-                console.log();
-            } catch (error) {
-                console.log(`❌ ${typeName}: Error - ${error.message}\n`);
-            }
-        }
-    }
-
-    showHelp() {
-        console.log(`
-🚀 QOBI Relayer CLI
-
-USAGE:
-    node cli.js <command> [options]
-
-COMMANDS:
-    status              Show system status
-    process             Process daily trees manually
-    auto [minutes]      Start auto-processing (default: 60 min)
-    test-ai             Test AI validator connection
-    validate [type]     Demo AI validation (type: 0-5)
-    trees [day]         Show trees for day (default: current)
-    help                Show this help message
-
-EXAMPLES:
-    node cli.js status
-    node cli.js process
-    node cli.js auto 30
-    node cli.js validate 0
-    node cli.js trees 123
-
-SETUP:
-    1. Make sure Anvil is running: anvil
-    2. Start Ollama: ollama serve
-    3. Install Ollama model: ollama pull llama3.2:3b
-    4. Check .env file has correct addresses
-        `);
-    }
+// Initialize service
+async function initService() {
+  if (!relayerService) {
+    relayerService = new RelayerService();
+    await relayerService.initialize();
+  }
+  return relayerService;
 }
 
-// Run CLI if called directly
-if (require.main === module) {
-    const cli = new RelayerCLI();
-    cli.run().catch(console.error);
+// Submit transaction command
+program
+  .command('submit')
+  .description('Submit a transaction for processing')
+  .option('-f, --from <address>', 'From address')
+  .option('-t, --to <address>', 'To address')
+  .option('-v, --value <amount>', 'Value in ETH', '0')
+  .option('-d, --data <data>', 'Transaction data', '0x')
+  .action(async (options) => {
+    try {
+      const service = await initService();
+      
+      let { from, to, value, data } = options;
+      
+      // Interactive prompts if not provided
+      if (!from || !to) {
+        const answers = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'from',
+            message: 'From address:',
+            when: !from,
+            validate: (input) => ethers.isAddress(input) || 'Invalid address'
+          },
+          {
+            type: 'input',
+            name: 'to',
+            message: 'To address:',
+            when: !to,
+            validate: (input) => ethers.isAddress(input) || 'Invalid address'
+          },
+          {
+            type: 'input',
+            name: 'value',
+            message: 'Value (ETH):',
+            default: '0',
+            when: !value
+          },
+          {
+            type: 'input',
+            name: 'data',
+            message: 'Transaction data:',
+            default: '0x',
+            when: !data
+          }
+        ]);
+        
+        from = from || answers.from;
+        to = to || answers.to;
+        value = value || answers.value;
+        data = data || answers.data;
+      }
+
+      const txId = await service.addTransaction({ from, to, value, data });
+      
+      console.log(chalk.green('✅ Transaction submitted successfully!'));
+      console.log(chalk.blue(`📝 Transaction ID: ${txId}`));
+      console.log(chalk.yellow('⏳ Transaction is now queued for AI validation...'));
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+    }
+  });
+
+// Status command
+program
+  .command('status')
+  .description('Show relayer service status')
+  .action(async () => {
+    try {
+      const service = await initService();
+      const stats = service.getStats();
+      
+      console.log(chalk.blue.bold('\n📊 QOBI Relayer Status\n'));
+      console.log(chalk.green(`✅ Service: Running`));
+      console.log(chalk.blue(`📋 Pending Transactions: ${stats.pendingTransactions}`));
+      console.log(chalk.blue(`🔄 Processed Batches: ${stats.processedBatches}`));
+      console.log(chalk.blue(`✅ Total Validated: ${stats.totalValidated}`));
+      console.log(chalk.blue(`🚀 Total Relayed: ${stats.totalRelayed}`));
+      console.log(chalk.blue(`⚡ Avg Processing Time: ${stats.averageProcessingTime.toFixed(2)}ms`));
+      console.log(chalk.red(`❌ Errors: ${stats.errorCount}`));
+      
+      if (stats.merkleTreeStats) {
+        console.log(chalk.yellow(`\n🌳 Merkle Tree:`));
+        console.log(chalk.yellow(`   Leaves: ${stats.merkleTreeStats.leafCount}`));
+        console.log(chalk.yellow(`   Depth: ${stats.merkleTreeStats.depth}`));
+        console.log(chalk.yellow(`   Root: ${stats.merkleTreeStats.root}`));
+      }
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+    }
+  });
+
+// Relay command
+program
+  .command('relay <transactionId>')
+  .description('Relay a validated transaction to the blockchain')
+  .action(async (transactionId) => {
+    try {
+      const service = await initService();
+      
+      console.log(chalk.yellow(`🚀 Relaying transaction ${transactionId}...`));
+      
+      const result = await service.relayTransaction(transactionId);
+      
+      console.log(chalk.green('✅ Transaction relayed successfully!'));
+      console.log(chalk.blue(`🔗 TX Hash: ${result.txHash}`));
+      console.log(chalk.blue(`✍️ Signature: ${result.signature.slice(0, 20)}...`));
+      console.log(chalk.blue(`🌳 Merkle Proof: ${result.merkleProof.length} nodes`));
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+    }
+  });
+
+// Batches command
+program
+  .command('batches')
+  .description('Show recent processed batches')
+  .option('-c, --count <number>', 'Number of batches to show', '5')
+  .action(async (options) => {
+    try {
+      const service = await initService();
+      const count = parseInt(options.count);
+      const batches = service.getRecentBatches(count);
+      
+      console.log(chalk.blue.bold(`\n📦 Recent ${count} Batches\n`));
+      
+      if (batches.length === 0) {
+        console.log(chalk.yellow('No batches processed yet.'));
+        return;
+      }
+      
+      batches.forEach((batch, index) => {
+        console.log(chalk.cyan(`${index + 1}. Batch: ${batch.id}`));
+        console.log(`   📅 Processed: ${batch.processedAt}`);
+        console.log(`   📊 Transactions: ${batch.stats.total} (${batch.stats.validated} validated, ${batch.stats.rejected} rejected)`);
+        console.log(`   ⏱️ Processing Time: ${batch.processingTime}ms`);
+        console.log(`   🌳 Merkle Root: ${batch.merkleRoot}`);
+        console.log('');
+      });
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+    }
+  });
+
+// AI status command
+program
+  .command('ai-status')
+  .description('Check AI validator status')
+  .action(async () => {
+    try {
+      const service = await initService();
+      const connection = await service.aiValidator.testConnection();
+      const stats = service.aiValidator.getValidationStats();
+      
+      console.log(chalk.blue.bold('\n🤖 AI Validator Status\n'));
+      
+      if (connection.connected) {
+        console.log(chalk.green('✅ Connection: OK'));
+        console.log(chalk.blue(`🔗 URL: ${service.config.ollamaUrl}`));
+        console.log(chalk.blue(`🧠 Model: ${connection.currentModel}`));
+        console.log(chalk.blue(`📋 Available Models: ${connection.availableModels.length}`));
+      } else {
+        console.log(chalk.red('❌ Connection: Failed'));
+        console.log(chalk.red(`Error: ${connection.error}`));
+      }
+      
+      if (stats.totalValidations) {
+        console.log(chalk.yellow(`\n📊 Validation Stats:`));
+        console.log(chalk.yellow(`   Total: ${stats.totalValidations}`));
+        console.log(chalk.yellow(`   Avg Risk Score: ${stats.averageRiskScore.toFixed(2)}`));
+        console.log(chalk.yellow(`   Avg Confidence: ${stats.averageConfidence.toFixed(2)}`));
+        console.log(chalk.yellow(`   Classifications: ${JSON.stringify(stats.classifications)}`));
+      }
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+    }
+  });
+
+// Interactive mode
+program
+  .command('interactive')
+  .alias('i')
+  .description('Start interactive mode')
+  .action(async () => {
+    try {
+      const service = await initService();
+      
+      console.log(chalk.blue.bold('\n🚀 QOBI Interactive Mode\n'));
+      
+      while (true) {
+        const { action } = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'action',
+            message: 'What would you like to do?',
+            choices: [
+              'Submit Transaction',
+              'View Status',
+              'View Recent Batches',
+              'Check AI Status',
+              'Exit'
+            ]
+          }
+        ]);
+        
+        switch (action) {
+          case 'Submit Transaction':
+            await submitInteractive(service);
+            break;
+          case 'View Status':
+            await showStatus(service);
+            break;
+          case 'View Recent Batches':
+            await showBatches(service);
+            break;
+          case 'Check AI Status':
+            await showAIStatus(service);
+            break;
+          case 'Exit':
+            console.log(chalk.green('👋 Goodbye!'));
+            return;
+        }
+        
+        console.log(''); // Add spacing
+      }
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+    }
+  });
+
+// Interactive helper functions
+async function submitInteractive(service) {
+  const answers = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'from',
+      message: 'From address:',
+      validate: (input) => ethers.isAddress(input) || 'Invalid address'
+    },
+    {
+      type: 'input',
+      name: 'to',
+      message: 'To address:',
+      validate: (input) => ethers.isAddress(input) || 'Invalid address'
+    },
+    {
+      type: 'input',
+      name: 'value',
+      message: 'Value (ETH):',
+      default: '0'
+    }
+  ]);
+  
+  const txId = await service.addTransaction(answers);
+  console.log(chalk.green(`✅ Transaction ${txId} submitted!`));
 }
 
-module.exports = { RelayerCLI };
+async function showStatus(service) {
+  const stats = service.getStats();
+  console.log(chalk.blue(`📋 Pending: ${stats.pendingTransactions} | Processed: ${stats.totalProcessed} | Relayed: ${stats.totalRelayed}`));
+}
+
+async function showBatches(service) {
+  const batches = service.getRecentBatches(3);
+  console.log(chalk.cyan(`📦 Recent ${batches.length} batches processed`));
+}
+
+async function showAIStatus(service) {
+  const connection = await service.aiValidator.testConnection();
+  const status = connection.connected ? chalk.green('✅ Connected') : chalk.red('❌ Disconnected');
+  console.log(`🤖 AI Validator: ${status}`);
+}
+
+// Demo command
+program
+  .command('demo')
+  .description('Run a demo with sample transactions')
+  .option('-c, --count <number>', 'Number of demo transactions', '5')
+  .action(async (options) => {
+    try {
+      const service = await initService();
+      const count = parseInt(options.count);
+      
+      console.log(chalk.blue.bold(`\n🎯 Running demo with ${count} transactions\n`));
+      
+      const demoTransactions = [];
+      for (let i = 0; i < count; i++) {
+        const tx = {
+          from: ethers.Wallet.createRandom().address,
+          to: ethers.Wallet.createRandom().address,
+          value: (Math.random() * 0.1).toFixed(4),
+          data: '0x'
+        };
+        
+        const txId = await service.addTransaction(tx);
+        demoTransactions.push({ id: txId, ...tx });
+        
+        console.log(chalk.green(`✅ ${i + 1}/${count} Demo transaction ${txId} submitted`));
+        
+        // Small delay
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      console.log(chalk.blue('\n⏳ Waiting for batch processing...'));
+      
+      // Wait a bit for processing
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      const stats = service.getStats();
+      console.log(chalk.green(`\n🎉 Demo complete! Check status for results.`));
+      console.log(chalk.blue(`📊 Current stats: ${stats.totalValidated} validated, ${stats.totalRelayed} relayed`));
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+    }
+  });
+
+program.parse();

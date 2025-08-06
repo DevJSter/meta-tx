@@ -1,272 +1,315 @@
 const { ethers } = require('ethers');
-const { AIValidator } = require('./ai-validator');
-const { MerkleTreeBuilder } = require('./merkle-tree');
-const { EIP712Signer } = require('./eip712-signer');
-require('dotenv').config();
+const EIP712Signer = require('./eip712-signer');
+const AIValidator = require('./ai-validator');
+const QOBIMerkleTree = require('./merkle-tree');
 
-/**
- * Relayer service that processes AI validation and submits trees to blockchain
- */
 class RelayerService {
-    constructor() {
-        this.provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-        this.wallet = new ethers.Wallet(process.env.PRIVATE_KEY, this.provider);
-        this.aiValidator = new AIValidator(process.env.OLLAMA_URL, process.env.OLLAMA_MODEL);
-        this.merkleBuilder = new MerkleTreeBuilder();
-        this.eip712Signer = new EIP712Signer();
-        
-        // Contract instances
-        this.contracts = this.initializeContracts();
-        
-        console.log('🚀 QOBI Relayer Service initialized');
-        console.log(`Relayer address: ${this.wallet.address}`);
+  constructor(config = {}) {
+    this.config = {
+      rpcUrl: config.rpcUrl || process.env.RPC_URL,
+      privateKey: config.privateKey || process.env.PRIVATE_KEY,
+      chainId: config.chainId || parseInt(process.env.CHAIN_ID) || 202102,
+      batchSize: config.batchSize || parseInt(process.env.BATCH_SIZE) || 100,
+      processingInterval: config.processingInterval || parseInt(process.env.PROCESSING_INTERVAL) || 10000,
+      ollamaUrl: config.ollamaUrl || process.env.OLLAMA_URL,
+      ollamaModel: config.ollamaModel || process.env.OLLAMA_MODEL,
+      ...config
+    };
+
+    this.provider = new ethers.JsonRpcProvider(this.config.rpcUrl);
+    this.signer = new EIP712Signer(this.config.privateKey, this.config.chainId);
+    this.aiValidator = new AIValidator(this.config.ollamaUrl, this.config.ollamaModel);
+    this.merkleTree = new QOBIMerkleTree();
+
+    this.pendingTransactions = [];
+    this.processedBatches = [];
+    this.isProcessing = false;
+    this.stats = {
+      totalProcessed: 0,
+      totalValidated: 0,
+      totalRelayed: 0,
+      averageProcessingTime: 0,
+      errorCount: 0
+    };
+
+    // Contract addresses
+    this.contracts = {
+      systemDeployer: config.systemDeployer || process.env.SYSTEM_DEPLOYER_ADDRESS,
+      accessControl: config.accessControl || process.env.ACCESS_CONTROL_ADDRESS,
+      dailyTree: config.dailyTree || process.env.DAILY_TREE_ADDRESS,
+      merkleDistributor: config.merkleDistributor || process.env.MERKLE_DISTRIBUTOR_ADDRESS,
+      stabilizingContract: config.stabilizingContract || process.env.STABILIZING_CONTRACT_ADDRESS,
+      relayerTreasury: config.relayerTreasury || process.env.RELAYER_TREASURY_ADDRESS
+    };
+  }
+
+  async initialize() {
+    console.log('🚀 Initializing QOBI Relayer Service...');
+    
+    // Test connections
+    await this.testConnections();
+    
+    // Start processing loop
+    this.startProcessing();
+    
+    console.log('✅ Relayer Service initialized successfully');
+  }
+
+  async testConnections() {
+    try {
+      // Test blockchain connection
+      const network = await this.provider.getNetwork();
+      console.log(`📡 Connected to network: ${network.name} (Chain ID: ${network.chainId})`);
+
+      // Test AI validator connection
+      const aiStatus = await this.aiValidator.testConnection();
+      if (aiStatus.connected) {
+        console.log(`🤖 AI Validator connected: ${this.config.ollamaModel}`);
+      } else {
+        console.warn(`⚠️ AI Validator connection failed: ${aiStatus.error}`);
+      }
+
+      // Test wallet
+      const wallet = new ethers.Wallet(this.config.privateKey, this.provider);
+      const balance = await wallet.provider.getBalance(wallet.address);
+      console.log(`💰 Wallet balance: ${ethers.formatEther(balance)} ETH`);
+
+    } catch (error) {
+      console.error('❌ Connection test failed:', error);
+      throw error;
+    }
+  }
+
+  async addTransaction(tx) {
+    // Validate required fields
+    if (!tx.from || !tx.to) {
+      throw new Error('Transaction must have from and to addresses');
     }
 
-    /**
-     * Initialize contract instances
-     */
-    initializeContracts() {
-        const systemDeployerABI = [
-            "function dailyTreeGenerator() view returns (address)",
-            "function merkleDistributor() view returns (address)",
-            "function accessControl() view returns (address)"
-        ];
+    const transaction = {
+      id: this.generateTransactionId(),
+      from: tx.from,
+      to: tx.to,
+      value: tx.value || '0',
+      data: tx.data || '0x',
+      gasLimit: tx.gasLimit || '21000',
+      gasPrice: tx.gasPrice,
+      timestamp: Math.floor(Date.now() / 1000),
+      status: 'pending',
+      ...tx
+    };
 
-        const dailyTreeABI = [
-            "function submitDailyTree(uint256 day, uint256 interactionType, bytes32 merkleRoot, address[] users, uint256[] amounts, bytes signature) external",
-            "function getDailyTree(uint256 day, uint256 interactionType) view returns (bytes32, address[], uint256[], bool)",
-            "function getCurrentDay() view returns (uint256)"
-        ];
+    this.pendingTransactions.push(transaction);
+    console.log(`📝 Added transaction ${transaction.id} to queue`);
+    
+    return transaction.id;
+  }
 
-        const accessControlABI = [
-            "function hasRole(bytes32 role, address account) view returns (bool)",
-            "function RELAYER_ROLE() view returns (bytes32)",
-            "function DEFAULT_ADMIN_ROLE() view returns (bytes32)"
-        ];
+  async processBatch() {
+    if (this.isProcessing || this.pendingTransactions.length === 0) {
+      return;
+    }
 
-        return {
-            systemDeployer: new ethers.Contract(process.env.SYSTEM_DEPLOYER_ADDRESS, systemDeployerABI, this.wallet),
-            dailyTree: new ethers.Contract(process.env.DAILY_TREE_ADDRESS, dailyTreeABI, this.wallet),
-            accessControl: new ethers.Contract(process.env.ACCESS_CONTROL_ADDRESS, accessControlABI, this.wallet)
+    this.isProcessing = true;
+    const startTime = Date.now();
+
+    try {
+      // Take a batch of transactions
+      const batchSize = Math.min(this.config.batchSize, this.pendingTransactions.length);
+      const batch = this.pendingTransactions.splice(0, batchSize);
+      
+      console.log(`🔄 Processing batch of ${batch.length} transactions...`);
+
+      // AI Validation
+      const validations = await this.aiValidator.batchValidate(batch);
+      
+      // Add to merkle tree
+      const merkleLeaves = [];
+      for (let i = 0; i < batch.length; i++) {
+        const tx = batch[i];
+        const validation = validations[i];
+        
+        // Create merkle leaf data
+        const leafData = {
+          tx,
+          validation,
+          batchId: this.generateBatchId(),
+          timestamp: Date.now()
         };
-    }
-
-    /**
-     * Check if relayer has proper permissions
-     */
-    async checkPermissions() {
-        try {
-            // Try to get the RELAYER_ROLE constant
-            let relayerRole;
-            try {
-                relayerRole = await this.contracts.accessControl.RELAYER_ROLE();
-            } catch (error) {
-                // If RELAYER_ROLE() doesn't exist, use the keccak256 hash directly
-                relayerRole = ethers.keccak256(ethers.toUtf8Bytes("RELAYER_ROLE"));
-                console.log('Using computed RELAYER_ROLE hash:', relayerRole);
-            }
-            
-            const hasRole = await this.contracts.accessControl.hasRole(relayerRole, this.wallet.address);
-            
-            console.log(`Relayer role check: ${hasRole ? '✅ Authorized' : '❌ Not authorized'}`);
-            console.log(`Relayer address: ${this.wallet.address}`);
-            console.log(`Role hash: ${relayerRole}`);
-            
-            return hasRole;
-        } catch (error) {
-            console.error('Permission check failed:', error.message);
-            return false;
-        }
-    }
-
-    /**
-     * Process daily trees for all interaction types
-     */
-    async processDailyTrees() {
-        console.log('\n🔄 Starting daily tree processing...');
         
-        try {
-            // Test AI connection first
-            const aiConnected = await this.aiValidator.testConnection();
-            if (!aiConnected) {
-                throw new Error('AI validator not available');
-            }
-
-            // Check permissions
-            const hasPermission = await this.checkPermissions();
-            if (!hasPermission) {
-                throw new Error('Relayer not authorized');
-            }
-
-            // Get current day
-            const currentDay = await this.contracts.dailyTree.getCurrentDay();
-            console.log(`📅 Processing trees for day: ${currentDay}`);
-
-            // Process each interaction type
-            const results = [];
-            for (let interactionType = 0; interactionType < 6; interactionType++) {
-                try {
-                    const result = await this.processInteractionType(currentDay, interactionType);
-                    results.push(result);
-                    
-                    // Add delay between submissions to avoid nonce issues
-                    await this.delay(2000);
-                } catch (error) {
-                    console.error(`Failed to process interaction type ${interactionType}:`, error.message);
-                    results.push({ interactionType, success: false, error: error.message });
-                }
-            }
-
-            console.log('\n📊 Daily processing complete:');
-            results.forEach(result => {
-                const typeName = this.aiValidator.interactionTypes[result.interactionType];
-                console.log(`  ${typeName}: ${result.success ? '✅' : '❌'} ${result.userCount || 0} users`);
-            });
-
-            return results;
-        } catch (error) {
-            console.error('Daily processing failed:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * Process single interaction type for a day
-     */
-    async processInteractionType(day, interactionType) {
-        const typeName = this.aiValidator.interactionTypes[interactionType];
-        console.log(`\n🤖 Processing ${typeName} interactions...`);
-
-        try {
-            // Check if tree already exists
-            const existingTree = await this.contracts.dailyTree.getDailyTree(day, interactionType);
-            if (existingTree[3]) { // isSubmitted
-                console.log(`⏭️  Tree already submitted for ${typeName}`);
-                return { interactionType, success: true, userCount: existingTree[1].length, alreadySubmitted: true };
-            }
-
-            // Get AI-validated users
-            const qualifiedUsers = await this.aiValidator.getQualifiedUsers(day, interactionType);
-            
-            if (qualifiedUsers.length === 0) {
-                console.log(`⚠️  No qualified users for ${typeName}`);
-                return { interactionType, success: true, userCount: 0, noUsers: true };
-            }
-
-            console.log(`✅ AI validated ${qualifiedUsers.length} users for ${typeName}`);
-
-            // Build Merkle tree
-            const users = qualifiedUsers.map(u => u.user);
-            const amounts = qualifiedUsers.map(u => u.qobiAmount);
-            const merkleRoot = this.merkleBuilder.buildTree(users, amounts);
-
-            console.log(`🌳 Built Merkle tree with root: ${merkleRoot}`);
-
-            // Create EIP712 signature
-            const signature = await this.eip712Signer.signSubmission(
-                this.wallet,
-                day,
-                interactionType,
-                merkleRoot,
-                users,
-                amounts
-            );
-
-            console.log(`✍️  Created EIP712 signature`);
-
-            // Submit to blockchain
-            const tx = await this.contracts.dailyTree.submitDailyTree(
-                day,
-                interactionType,
-                merkleRoot,
-                users,
-                amounts,
-                signature
-            );
-
-            console.log(`📤 Transaction submitted: ${tx.hash}`);
-            
-            const receipt = await tx.wait();
-            console.log(`⛓️  Transaction confirmed in block ${receipt.blockNumber}`);
-
-            return {
-                interactionType,
-                success: true,
-                userCount: users.length,
-                merkleRoot,
-                txHash: tx.hash,
-                blockNumber: receipt.blockNumber
-            };
-
-        } catch (error) {
-            console.error(`❌ Failed to process ${typeName}:`, error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * Monitor and auto-process trees
-     */
-    async startAutoProcessing(intervalMinutes = 60) {
-        console.log(`🔄 Starting auto-processing every ${intervalMinutes} minutes`);
+        const leaf = this.merkleTree.addLeaf(leafData);
+        merkleLeaves.push({ leaf, data: leafData });
         
-        // Process immediately
-        try {
-            await this.processDailyTrees();
-        } catch (error) {
-            console.error('Initial processing failed:', error.message);
+        // Update transaction status
+        tx.status = validation.riskScore > 70 ? 'rejected' : 'validated';
+        tx.validation = validation;
+      }
+
+      // Build merkle tree and get root
+      const merkleRoot = this.merkleTree.getRoot();
+      
+      // Create batch record
+      const batchRecord = {
+        id: this.generateBatchId(),
+        transactions: batch,
+        validations,
+        merkleRoot,
+        merkleLeaves: merkleLeaves.map(item => ({
+          leaf: '0x' + item.leaf.toString('hex'),
+          txId: item.data.tx.id
+        })),
+        processedAt: new Date(),
+        processingTime: Date.now() - startTime,
+        stats: {
+          total: batch.length,
+          validated: batch.filter(tx => tx.status === 'validated').length,
+          rejected: batch.filter(tx => tx.status === 'rejected').length
         }
+      };
 
-        // Set up interval
-        setInterval(async () => {
-            try {
-                console.log('\n⏰ Auto-processing triggered');
-                await this.processDailyTrees();
-            } catch (error) {
-                console.error('Auto-processing failed:', error.message);
-            }
-        }, intervalMinutes * 60 * 1000);
+      this.processedBatches.push(batchRecord);
+      
+      // Update stats
+      this.updateStats(batchRecord);
+      
+      console.log(`✅ Batch ${batchRecord.id} processed successfully`);
+      console.log(`📊 Stats: ${batchRecord.stats.validated} validated, ${batchRecord.stats.rejected} rejected`);
+      console.log(`🌳 Merkle Root: ${merkleRoot}`);
+
+      return batchRecord;
+
+    } catch (error) {
+      console.error('❌ Batch processing failed:', error);
+      this.stats.errorCount++;
+      throw error;
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  startProcessing() {
+    console.log(`🔄 Starting batch processing (interval: ${this.config.processingInterval}ms)`);
+    
+    setInterval(async () => {
+      try {
+        await this.processBatch();
+      } catch (error) {
+        console.error('Processing interval error:', error);
+      }
+    }, this.config.processingInterval);
+  }
+
+  async relayTransaction(txId) {
+    // Find the transaction in processed batches
+    let transaction = null;
+    let batchRecord = null;
+
+    for (const batch of this.processedBatches) {
+      const found = batch.transactions.find(tx => tx.id === txId);
+      if (found) {
+        transaction = found;
+        batchRecord = batch;
+        break;
+      }
     }
 
-    /**
-     * Get processing status
-     */
-    async getStatus() {
-        try {
-            const currentDay = await this.contracts.dailyTree.getCurrentDay();
-            const hasPermission = await this.checkPermissions();
-            const aiConnected = await this.aiValidator.testConnection();
-            
-            const treeStatus = [];
-            for (let interactionType = 0; interactionType < 6; interactionType++) {
-                const tree = await this.contracts.dailyTree.getDailyTree(currentDay, interactionType);
-                treeStatus.push({
-                    type: this.aiValidator.interactionTypes[interactionType],
-                    submitted: tree[3],
-                    userCount: tree[1].length,
-                    merkleRoot: tree[0]
-                });
-            }
-
-            return {
-                currentDay: currentDay.toString(),
-                relayerAddress: this.wallet.address,
-                hasPermission,
-                aiConnected,
-                trees: treeStatus
-            };
-        } catch (error) {
-            console.error('Status check failed:', error.message);
-            return { error: error.message };
-        }
+    if (!transaction) {
+      throw new Error(`Transaction ${txId} not found in processed batches`);
     }
 
-    /**
-     * Utility delay function
-     */
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    if (transaction.status !== 'validated') {
+      throw new Error(`Transaction ${txId} is not validated (status: ${transaction.status})`);
     }
+
+    try {
+      // Create EIP-712 signed message
+      const typedMessage = this.signer.createTypedMessage(
+        transaction.from,
+        transaction.to,
+        transaction.value,
+        transaction.data,
+        transaction.validation
+      );
+
+      const signature = await this.signer.signQOBIMessage(typedMessage);
+
+      // Submit to blockchain
+      const wallet = new ethers.Wallet(this.config.privateKey, this.provider);
+      const txResponse = await wallet.sendTransaction({
+        to: transaction.to,
+        value: ethers.parseEther(transaction.value.toString()),
+        data: transaction.data,
+        gasLimit: transaction.gasLimit
+      });
+
+      console.log(`🚀 Transaction relayed: ${txResponse.hash}`);
+      
+      // Update transaction record
+      transaction.status = 'relayed';
+      transaction.txHash = txResponse.hash;
+      transaction.signature = signature;
+      transaction.relayedAt = new Date();
+
+      this.stats.totalRelayed++;
+
+      return {
+        txHash: txResponse.hash,
+        signature,
+        merkleProof: this.merkleTree.getProof(
+          Buffer.from(batchRecord.merkleLeaves.find(item => item.txId === txId).leaf.slice(2), 'hex')
+        )
+      };
+
+    } catch (error) {
+      console.error(`❌ Failed to relay transaction ${txId}:`, error);
+      transaction.status = 'failed';
+      transaction.error = error.message;
+      throw error;
+    }
+  }
+
+  generateTransactionId() {
+    return 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  generateBatchId() {
+    return 'batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  updateStats(batchRecord) {
+    this.stats.totalProcessed += batchRecord.stats.total;
+    this.stats.totalValidated += batchRecord.stats.validated;
+    
+    // Update average processing time
+    const totalBatches = this.processedBatches.length;
+    this.stats.averageProcessingTime = 
+      (this.stats.averageProcessingTime * (totalBatches - 1) + batchRecord.processingTime) / totalBatches;
+  }
+
+  getStats() {
+    return {
+      ...this.stats,
+      pendingTransactions: this.pendingTransactions.length,
+      processedBatches: this.processedBatches.length,
+      merkleTreeStats: this.merkleTree.getStats(),
+      aiValidatorStats: this.aiValidator.getValidationStats()
+    };
+  }
+
+  getRecentBatches(count = 10) {
+    return this.processedBatches.slice(-count);
+  }
+
+  async shutdown() {
+    console.log('🛑 Shutting down Relayer Service...');
+    this.isProcessing = false;
+    // Process any remaining transactions
+    if (this.pendingTransactions.length > 0) {
+      console.log(`🔄 Processing ${this.pendingTransactions.length} remaining transactions...`);
+      await this.processBatch();
+    }
+    console.log('✅ Relayer Service shutdown complete');
+  }
 }
 
-module.exports = { RelayerService };
+module.exports = RelayerService;

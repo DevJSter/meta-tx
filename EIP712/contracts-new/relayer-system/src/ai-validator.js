@@ -1,294 +1,217 @@
 const axios = require('axios');
-const { ethers } = require('ethers');
 
-/**
- * AI Validator using Ollama for social interaction validation
- */
 class AIValidator {
-    constructor(ollamaUrl = 'http://localhost:11434', model = 'llama3.2:3b') {
-        this.ollamaUrl = ollamaUrl;
-        this.model = model;
-        this.interactionTypes = [
-            'CREATE',     // 0 - Content creation
-            'LIKES',      // 1 - Social engagement  
-            'COMMENTS',   // 2 - Community interaction
-            'TIPPING',    // 3 - Peer rewards
-            'CRYPTO',     // 4 - Blockchain activity
-            'REFERRALS'   // 5 - Network growth
-        ];
-        
-        // Daily QOBI caps per interaction type
-        this.dailyCaps = [
-            ethers.parseEther('1.49'),  // CREATE
-            ethers.parseEther('0.05'),  // LIKES
-            ethers.parseEther('0.6'),   // COMMENTS
-            ethers.parseEther('7.96'),  // TIPPING
-            ethers.parseEther('9.95'),  // CRYPTO
-            ethers.parseEther('11.95')  // REFERRALS
-        ];
+  constructor(ollamaUrl = 'http://localhost:11434', model = 'llama3.2:latest') {
+    this.ollamaUrl = ollamaUrl;
+    this.model = model;
+    this.validationHistory = [];
+  }
+
+  async validateTransaction(tx) {
+    try {
+      const prompt = this.createValidationPrompt(tx);
+      const response = await this.queryOllama(prompt);
+      
+      const validation = this.parseValidationResponse(response);
+      validation.txHash = this.generateTxHash(tx);
+      validation.timestamp = Date.now();
+      
+      this.validationHistory.push(validation);
+      return validation;
+    } catch (error) {
+      console.error('AI validation failed:', error);
+      return this.createFallbackValidation(tx, error);
     }
+  }
 
-    /**
-     * Test Ollama connection
-     */
-    async testConnection() {
-        try {
-            const response = await axios.get(`${this.ollamaUrl}/api/tags`);
-            console.log('✅ Ollama connection successful');
-            console.log('Available models:', response.data.models?.map(m => m.name) || []);
-            return true;
-        } catch (error) {
-            console.error('❌ Ollama connection failed:', error.message);
-            console.log('Make sure Ollama is running: ollama serve');
-            return false;
-        }
-    }
+  createValidationPrompt(tx) {
+    return `Analyze this blockchain transaction for security risks and anomalies:
 
-    /**
-     * Ask Ollama to validate and score interactions
-     * @param {Array} interactions - Raw interaction data
-     * @param {number} interactionType - Type of interaction (0-5)
-     * @returns {Array} Validated and scored interactions
-     */
-    async validateInteractions(interactions, interactionType) {
-        const prompt = this.createValidationPrompt(interactions, interactionType);
-        
-        try {
-            const response = await axios.post(`${this.ollamaUrl}/api/generate`, {
-                model: this.model,
-                prompt: prompt,
-                stream: false,
-                options: {
-                    temperature: 0.3,
-                    top_k: 20,
-                    top_p: 0.9
-                }
-            });
+Transaction Details:
+- From: ${tx.from}
+- To: ${tx.to}
+- Value: ${tx.value} ETH
+- Data: ${tx.data}
+- Gas Limit: ${tx.gasLimit || 'not specified'}
+- Gas Price: ${tx.gasPrice || 'not specified'}
 
-            const aiResponse = response.data.response;
-            return this.parseAIResponse(aiResponse, interactions, interactionType);
-        } catch (error) {
-            console.error('AI validation failed:', error.message);
-            // Fallback to basic scoring
-            return this.fallbackScoring(interactions, interactionType);
-        }
-    }
+Please evaluate:
+1. Suspicious patterns in addresses
+2. Unusual value transfers
+3. Smart contract interaction risks
+4. Known malicious patterns
+5. Overall transaction safety
 
-    /**
-     * Create validation prompt for AI
-     */
-    createValidationPrompt(interactions, interactionType) {
-        const typeName = this.interactionTypes[interactionType];
-        
-        return `You are an AI validator for a social mining platform called QOBI. Your task is to validate and score user interactions.
-
-INTERACTION TYPE: ${typeName} (${interactionType})
-SCORING RULES:
-- Score each user from 0-100 points based on interaction quality
-- Consider: authenticity, engagement level, community value, content quality
-- Higher scores for genuine, valuable contributions
-- Lower scores for spam, low-effort, or suspicious activity
-- Points determine QOBI token allocation
-
-INTERACTIONS TO VALIDATE:
-${interactions.map((interaction, i) => 
-    `${i+1}. User: ${interaction.user}
-   Content: ${interaction.content || 'N/A'}
-   Metadata: ${JSON.stringify(interaction.metadata || {})}
-   `
-).join('\n')}
-
-RESPOND WITH ONLY JSON in this exact format:
+Respond with a JSON object containing:
 {
-  "validatedInteractions": [
-    {"user": "0x...", "points": 85, "reason": "High quality content"},
-    {"user": "0x...", "points": 45, "reason": "Low engagement"}
-  ]
+  "riskScore": 0-100,
+  "confidence": 0-100,
+  "classification": "safe|suspicious|malicious",
+  "warnings": ["array of warning messages"],
+  "recommendations": ["array of recommendations"],
+  "analysis": "detailed analysis text"
+}`;
+  }
+
+  async queryOllama(prompt) {
+    const response = await axios.post(`${this.ollamaUrl}/api/generate`, {
+      model: this.model,
+      prompt: prompt,
+      stream: false,
+      options: {
+        temperature: 0.3,
+        top_p: 0.9,
+        max_tokens: 1000
+      }
+    });
+
+    return response.data.response;
+  }
+
+  parseValidationResponse(response) {
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          validatorId: 'ollama-' + this.model,
+          riskScore: Math.min(100, Math.max(0, parsed.riskScore || 50)),
+          confidence: Math.min(100, Math.max(0, parsed.confidence || 70)),
+          classification: parsed.classification || 'unknown',
+          warnings: parsed.warnings || [],
+          recommendations: parsed.recommendations || [],
+          analysis: parsed.analysis || response.slice(0, 500),
+          rawResponse: response
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to parse AI response as JSON:', error);
+    }
+
+    // Fallback parsing
+    return this.createHeuristicValidation(response);
+  }
+
+  createHeuristicValidation(response) {
+    const text = response.toLowerCase();
+    let riskScore = 30; // Default medium-low risk
+    let confidence = 60;
+    let classification = 'unknown';
+    const warnings = [];
+    const recommendations = [];
+
+    // Heuristic analysis based on keywords
+    if (text.includes('malicious') || text.includes('dangerous') || text.includes('scam')) {
+      riskScore += 40;
+      classification = 'malicious';
+      warnings.push('AI detected potentially malicious patterns');
+    }
+    
+    if (text.includes('suspicious') || text.includes('unusual') || text.includes('anomaly')) {
+      riskScore += 20;
+      classification = classification === 'unknown' ? 'suspicious' : classification;
+      warnings.push('Suspicious activity detected');
+    }
+    
+    if (text.includes('safe') || text.includes('normal') || text.includes('legitimate')) {
+      riskScore = Math.max(10, riskScore - 20);
+      classification = classification === 'unknown' ? 'safe' : classification;
+    }
+
+    if (text.includes('high confidence') || text.includes('certain')) {
+      confidence += 20;
+    }
+
+    return {
+      validatorId: 'ollama-' + this.model + '-heuristic',
+      riskScore: Math.min(100, riskScore),
+      confidence: Math.min(100, confidence),
+      classification,
+      warnings,
+      recommendations,
+      analysis: response.slice(0, 500),
+      rawResponse: response
+    };
+  }
+
+  createFallbackValidation(tx, error) {
+    return {
+      validatorId: 'fallback-validator',
+      riskScore: 50, // Medium risk when AI is unavailable
+      confidence: 30, // Low confidence
+      classification: 'unknown',
+      warnings: ['AI validator unavailable - using fallback validation'],
+      recommendations: ['Manual review recommended'],
+      analysis: `Fallback validation due to error: ${error.message}`,
+      error: error.message,
+      timestamp: Date.now(),
+      txHash: this.generateTxHash(tx)
+    };
+  }
+
+  generateTxHash(tx) {
+    const data = JSON.stringify({
+      from: tx.from,
+      to: tx.to,
+      value: tx.value,
+      data: tx.data
+    });
+    return '0x' + require('crypto').createHash('sha256').update(data).digest('hex');
+  }
+
+  async batchValidate(transactions) {
+    const results = [];
+    for (const tx of transactions) {
+      const validation = await this.validateTransaction(tx);
+      results.push(validation);
+      
+      // Small delay to avoid overwhelming the AI service
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return results;
+  }
+
+  getValidationStats() {
+    if (this.validationHistory.length === 0) {
+      return { message: 'No validations performed yet' };
+    }
+
+    const classifications = {};
+    let totalRisk = 0;
+    let totalConfidence = 0;
+
+    this.validationHistory.forEach(v => {
+      classifications[v.classification] = (classifications[v.classification] || 0) + 1;
+      totalRisk += v.riskScore;
+      totalConfidence += v.confidence;
+    });
+
+    return {
+      totalValidations: this.validationHistory.length,
+      averageRiskScore: totalRisk / this.validationHistory.length,
+      averageConfidence: totalConfidence / this.validationHistory.length,
+      classifications,
+      recentValidations: this.validationHistory.slice(-10)
+    };
+  }
+
+  async testConnection() {
+    try {
+      const response = await axios.get(`${this.ollamaUrl}/api/tags`);
+      return {
+        connected: true,
+        availableModels: response.data.models || [],
+        currentModel: this.model
+      };
+    } catch (error) {
+      return {
+        connected: false,
+        error: error.message,
+        currentModel: this.model
+      };
+    }
+  }
 }
 
-Validate all ${interactions.length} interactions. Be fair but strict.`;
-    }
-
-    /**
-     * Parse AI response and convert to QOBI allocations
-     */
-    parseAIResponse(aiResponse, interactions, interactionType) {
-        try {
-            // Extract JSON from AI response
-            const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) {
-                throw new Error('No JSON found in AI response');
-            }
-
-            const parsed = JSON.parse(jsonMatch[0]);
-            const validatedUsers = [];
-            const dailyCap = this.dailyCaps[interactionType];
-
-            for (const validation of parsed.validatedInteractions) {
-                if (validation.points > 0 && validation.points <= 100) {
-                    // Calculate QOBI based on points and daily cap
-                    const qobiAmount = (dailyCap * BigInt(validation.points)) / 100n;
-                    
-                    validatedUsers.push({
-                        user: validation.user,
-                        points: validation.points,
-                        qobiAmount: qobiAmount.toString(),
-                        reason: validation.reason,
-                        interactionType
-                    });
-                }
-            }
-
-            console.log(`✅ AI validated ${validatedUsers.length}/${interactions.length} users for ${this.interactionTypes[interactionType]}`);
-            return validatedUsers;
-
-        } catch (error) {
-            console.error('Failed to parse AI response:', error.message);
-            console.log('AI Response:', aiResponse);
-            return this.fallbackScoring(interactions, interactionType);
-        }
-    }
-
-    /**
-     * Fallback scoring when AI fails
-     */
-    fallbackScoring(interactions, interactionType) {
-        console.log('🔄 Using fallback scoring algorithm');
-        
-        const validatedUsers = [];
-        const dailyCap = this.dailyCaps[interactionType];
-
-        for (const interaction of interactions) {
-            // Simple scoring based on interaction characteristics
-            let points = 50; // Base score
-            
-            // Adjust based on content length
-            if (interaction.content) {
-                if (interaction.content.length > 100) points += 20;
-                if (interaction.content.length > 500) points += 15;
-            }
-            
-            // Adjust based on engagement
-            if (interaction.metadata?.engagement) {
-                points += Math.min(interaction.metadata.engagement, 15);
-            }
-            
-            // Add randomness to simulate AI variation
-            points += Math.floor(Math.random() * 20) - 10;
-            
-            // Clamp to 0-100
-            points = Math.max(0, Math.min(100, points));
-            
-            if (points > 0) {
-                const qobiAmount = (dailyCap * BigInt(points)) / 100n;
-                
-                validatedUsers.push({
-                    user: interaction.user,
-                    points,
-                    qobiAmount: qobiAmount.toString(),
-                    reason: 'Algorithmic scoring',
-                    interactionType
-                });
-            }
-        }
-
-        return validatedUsers;
-    }
-
-    /**
-     * Get qualified users for a day and interaction type
-     * @param {number} day - Day number
-     * @param {number} interactionType - Interaction type
-     * @returns {Array} Qualified user data
-     */
-    async getQualifiedUsers(day, interactionType) {
-        // In a real system, this would fetch from database
-        // For demo, we'll generate mock interactions
-        const mockInteractions = this.generateMockInteractions(day, interactionType);
-        
-        console.log(`🤖 AI validating ${mockInteractions.length} interactions for ${this.interactionTypes[interactionType]} on day ${day}`);
-        
-        return await this.validateInteractions(mockInteractions, interactionType);
-    }
-
-    /**
-     * Generate mock interactions for testing
-     */
-    generateMockInteractions(day, interactionType) {
-        const userCount = Math.floor(Math.random() * 50) + 10; // 10-60 users
-        const interactions = [];
-        const typeName = this.interactionTypes[interactionType];
-
-        for (let i = 0; i < userCount; i++) {
-            // Generate random user address
-            const user = ethers.Wallet.createRandom().address;
-            
-            // Generate interaction content based on type
-            let content = '';
-            let metadata = {};
-
-            switch (interactionType) {
-                case 0: // CREATE
-                    content = `User created: "${this.generateContent('post')}"`;
-                    metadata = { contentType: 'post', length: content.length };
-                    break;
-                case 1: // LIKES
-                    content = `User liked ${Math.floor(Math.random() * 10) + 1} posts`;
-                    metadata = { likesGiven: Math.floor(Math.random() * 10) + 1 };
-                    break;
-                case 2: // COMMENTS
-                    content = `Comment: "${this.generateContent('comment')}"`;
-                    metadata = { commentLength: content.length, replies: Math.floor(Math.random() * 5) };
-                    break;
-                case 3: // TIPPING
-                    content = `Tipped ${ethers.parseEther((Math.random() * 0.1).toFixed(4))} ETH`;
-                    metadata = { tipAmount: Math.random() * 0.1, recipients: Math.floor(Math.random() * 3) + 1 };
-                    break;
-                case 4: // CRYPTO
-                    content = `DeFi interaction: ${['swap', 'stake', 'farm', 'lend'][Math.floor(Math.random() * 4)]}`;
-                    metadata = { defiAction: content.split(': ')[1], gasUsed: Math.floor(Math.random() * 100000) + 21000 };
-                    break;
-                case 5: // REFERRALS
-                    content = `Referred ${Math.floor(Math.random() * 5) + 1} new users`;
-                    metadata = { referredCount: Math.floor(Math.random() * 5) + 1, conversionRate: Math.random() };
-                    break;
-            }
-
-            interactions.push({
-                user,
-                content,
-                metadata,
-                timestamp: day * 86400 + Math.floor(Math.random() * 86400), // Random time in day
-                interactionType
-            });
-        }
-
-        return interactions;
-    }
-
-    /**
-     * Generate realistic content
-     */
-    generateContent(type) {
-        const postContent = [
-            "Just discovered this amazing DeFi protocol! The yields are incredible 🚀",
-            "Building the future of decentralized finance, one transaction at a time",
-            "HODL strong! The fundamentals haven't changed 💎🙌",
-            "New to crypto? Here's what you need to know about wallets and security",
-            "Staking rewards are looking good this month! Time to compound"
-        ];
-
-        const commentContent = [
-            "Great post! Thanks for sharing this insight",
-            "I disagree, here's why...",
-            "This changed my perspective completely",
-            "Can you elaborate on this point?",
-            "Love this community! 🔥"
-        ];
-
-        const content = type === 'post' ? postContent : commentContent;
-        return content[Math.floor(Math.random() * content.length)];
-    }
-}
-
-module.exports = { AIValidator };
+module.exports = AIValidator;
